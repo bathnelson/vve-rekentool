@@ -372,7 +372,7 @@ function checks(){
   act.forEach(m=>{
     const t=S.mt[m.k];
     if(!m.perWoning && !(num(t.offerte)>0)) err.push({s:3,t:`${m.naam}: vul het aantal m² uit de offerte in.`});
-    if(S.opp3d?.[m.k]){ if(oppPct(m.k)<70) err.push({s:3,t:`${m.naam}: ${nf.format(num(t.offerte))} m² is ${nf.format(Math.round(oppPct(m.k)))}% van ${OPP3D[m.k].wat} (${nf.format(S.opp3d[m.k])} m²); minimaal 70% is vereist.`}); }
+    if(OPP3D[m.k]&&S.opp3d?.[m.k]){ if(oppPct(m.k)<70) err.push({s:3,t:`${m.naam}: ${nf.format(num(t.offerte))} m² is ${nf.format(Math.round(oppPct(m.k)))}% van ${OPP3D[m.k].wat} (${nf.format(S.opp3d[m.k])} m²); minimaal 70% is vereist.`}); }
     else if(m.min==='70' && !t.ok70) err.push({s:3,t:`${m.naam}: bevestig dat het om ${m.minTekst} gaat.`});
     if(!t.eisOk) err.push({s:3,t:`${m.naam}: bevestig dat de offerte voldoet aan de eis (${m.eis}).`});
   });
@@ -589,7 +589,7 @@ function maxHtml(k){
   const max=S.opp3d[k], v=num(S.mt[k]?.offerte), van=S.opp3d.van;
   return `Alle buitenmuren samen zijn volgens 3D BAG maximaal <b>${nf.format(max)} m²</b>${van>1?` (${van} panden)`:''}, inclusief ramen en deuren en zonder muren die aan de buren grenzen.`
     +(v>max?` <b>U vult ${nf.format(v)} m² in; dat is meer dan het maximum.</b> Controleer de offerte.`:'')
-    +`<span class="hint">De spouw zit alleen achter het dichte muurdeel, dus de offerte ligt meestal duidelijk lager.</span>`;
+    +`<span class="hint">${k==='G'?'De spouw zit alleen achter het dichte muurdeel':'Isolatie komt alleen op het dichte muurdeel'}, dus de offerte ligt meestal duidelijk lager.</span>`;
 }
 function oppPct(k){ const tot=S.opp3d?.[k]; return tot ? num(S.mt[k]?.offerte)/tot*100 : 0; }
 function oppPctHtml(k){
@@ -699,7 +699,79 @@ function vControle(){
       <label class="btn small">Bestand openen<input type="file" accept=".json,application/json" data-act="loadfile" hidden></label></div>
     </details>
   </div>
+  ${vVerzenden(err)}
   <p class="muted small">Aan de uitkomsten van de berekening kunnen geen rechten worden ontleend. De uitkomst is geen aanvraag voor subsidie.</p>`;
+}
+
+/* ======= Verzenden (voorlopig demo) =======
+   Zet VERZEND_URL op een echt endpoint om te verzenden: er gaat dan een POST met JSON
+   (aanvraagData() + de ingevulde rekentool als base64) heen. Zolang hij null is, verstuurt de pagina niets. */
+const VERZEND_URL = null;
+const MAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function vVerzenden(err){
+  const v=S.verzonden;
+  if(v) return `<div class="card">
+    <h3>Aanvraag verzonden ${VERZEND_URL?'':'<span class="badge bad">Demo</span>'}</h3>
+    ${VERZEND_URL?`<div class="note ok">Uw aanvraag is op ${esc(v.datum)} verzonden. Referentie: <b>${esc(v.ref)}</b>. U ontvangt een bevestiging op ${esc(v.email)}.</div>`
+      :`<div class="note warn"><b>Dit is een demonstratie: er is niets verstuurd.</b> In de echte versie gaan de ingevulde rekentool (Excel) en de gegevens hieronder naar het subsidiebureau, en krijgt u een bevestiging op ${esc(v.email)}. Dien uw aanvraag voorlopig in via het aanvraagformulier van de gemeente.</div>
+      <p class="small">Demo-referentie: <b>${esc(v.ref)}</b> · ${esc(v.datum)}</p>`}
+    <details><summary>Wat er verstuurd ${VERZEND_URL?'is':'zou worden'}</summary><pre style="white-space:pre-wrap;font-size:.8rem;max-height:320px;overflow:auto;background:var(--surface-2);padding:10px;border-radius:8px">${esc(JSON.stringify(v.data,null,2))}</pre>
+      <p class="hint">Plus de ingevulde rekentool als bijlage (${esc(v.xlsx)}).</p></details>
+    <div class="row" style="margin-top:12px"><button class="btn small" data-act="verzendopnieuw">Gegevens aanpassen en opnieuw verzenden</button></div>
+  </div>`;
+  const tr=S._tryV, c=S.contact||{};
+  const fout=(ok,tekst)=>tr&&!ok?`<span class="fielderr">${tekst}</span>`:'';
+  const mailOk=MAIL_RE.test(c.email||'');
+  return `<div class="card">
+    <h3>Aanvraag verzenden ${VERZEND_URL?'':'<span class="badge bad">Demo</span>'}</h3>
+    ${VERZEND_URL?'':'<div class="note warn small">Deze knop is nog een demonstratie: er wordt niets verstuurd.</div>'}
+    <p>Verstuur de berekening en de ingevulde rekentool rechtstreeks naar het subsidiebureau.</p>
+    ${err.length?`<div class="note err small">Los eerst de ${err.length} open punt${err.length===1?'':'en'} hierboven op.</div>`:''}
+    <div class="grid2">
+      <label class="fld"><span class="l">Naam contactpersoon</span><input type="text" data-c="naam" value="${esc(c.naam||'')}" autocomplete="name" class="${tr&&!c.naam?.trim()?'err':''}">${fout(c.naam?.trim(),'Vul uw naam in.')}</label>
+      <label class="fld"><span class="l">Functie in de VvE <span class="muted small">(optioneel)</span></span><input type="text" data-c="rol" value="${esc(c.rol||'')}" placeholder="Bijv. voorzitter, penningmeester"></label>
+      <label class="fld"><span class="l">E-mailadres</span><input type="text" inputmode="email" data-c="email" value="${esc(c.email||'')}" autocomplete="email" class="${tr&&!mailOk?'err':''}">${fout(mailOk,'Vul een geldig e-mailadres in.')}</label>
+      <label class="fld"><span class="l">Telefoonnummer <span class="muted small">(optioneel)</span></span><input type="text" inputmode="tel" data-c="tel" value="${esc(c.tel||'')}" autocomplete="tel"></label>
+    </div>
+    <label class="confirm"><input type="checkbox" data-c="akkoord" ${c.akkoord?'checked':''}><span>Ik verklaar dat ik deze gegevens namens de VvE naar waarheid heb ingevuld.${fout(c.akkoord,' Graag bevestigen.')}</span></label>
+    <div class="row" style="margin-top:14px"><button class="btn primary" data-act="verzend" ${err.length?'disabled':''}>Aanvraag verzenden${VERZEND_URL?'':' (demo)'}</button><span id="verzendmsg" class="small muted" aria-live="polite"></span></div>
+  </div>`;
+}
+function aanvraagData(){
+  syncVerdeling();
+  const b=B(), t=totaal();
+  return {
+    regeling:"Subsidieregeling verduurzaming Haarlemse VvE's 2026",
+    vve:{naam:S.vve, adres:S.vveAdres, bouwjaar:S.bouwjaar||null},
+    contact:{naam:S.contact?.naam, rol:S.contact?.rol||'', email:S.contact?.email, telefoon:S.contact?.tel||''},
+    aantallen:{A_gebouw:A(), B_aanvraag:b, C_eigenaarBewoners:S.woningen.filter(w=>w.eig==='eigenaar-bewoner').length, D_eigenaarVerhuurders:S.woningen.filter(w=>w.eig==='eigenaar-verhuurder').length},
+    maatregelen:actief().map(m=>({code:m.k, naam:m.naam, eenheid:m.perWoning?'woningen':'m2', hoeveelheid:r2(m2Totaal(m)), tarief:m.tarief, bedrag:r2(m2Totaal(m)*m.tarief)})),
+    totaalSubsidie:r2(t), gemiddeldPerWoning:b?r2(t/b):0,
+    woningen:S.woningen.map(w=>({adres:[w.straat,w.nr,w.toev].filter(Boolean).join(' '), woonplaats:w.plaats, woz:w.woz, wozWaarde:w.wozWaarde||null, eigenaar:w.eig, energielabel:w.label,
+      slechteBouwdelen:w.label==='Onbekend'?bouwdelen(w):[], maatregelen:Object.fromEntries(actief().map(m=>[m.k,r2(num(vdGet(w,m.k)))]).filter(([,v])=>v)), subsidie:r2(bedragWoning(w))})),
+  };
+}
+async function verzend(){
+  S._tryV=true; const c=S.contact||{};
+  if(checks().err.length || !c.naam?.trim() || !MAIL_RE.test(c.email||'') || !c.akkoord){ render(); document.querySelector('[data-c].err, .fielderr')?.scrollIntoView({block:'center'}); return; }
+  const msg=document.getElementById('verzendmsg'); if(msg) msg.textContent='Bezig met verzenden…';
+  try{
+    const data=aanvraagData();
+    const blob=await makeXlsx({download:false});
+    const naam=fname('Rekentool')+'.xlsx';
+    const d=new Date(), datum=d.toLocaleString('nl-NL',{dateStyle:'long',timeStyle:'short'});
+    let ref='DEMO-'+d.toISOString().slice(0,10).replace(/-/g,'')+'-'+Math.random().toString(36).slice(2,6).toUpperCase();
+    if(VERZEND_URL){
+      const b64=await new Promise((ok,nok)=>{ const r=new FileReader(); r.onload=()=>ok(String(r.result).split(',')[1]); r.onerror=nok; r.readAsDataURL(blob); });
+      const res=await fetch(VERZEND_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,bijlage:{naam,base64:b64}})});
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      ref=(await res.json().catch(()=>({}))).referentie||ref.replace('DEMO-','');
+    }
+    S.verzonden={ref,datum,email:c.email,data,xlsx:`${naam}, ${Math.round(blob.size/1024)} kB`};
+    save(); render();
+  }catch(e){
+    console.error(e); if(msg) msg.textContent='Verzenden is niet gelukt. Probeer het later opnieuw of download de Excel en dien die zelf in.';
+  }
 }
 
 /* ======= Navigatie & validatie per stap ======= */
@@ -747,10 +819,13 @@ document.addEventListener('click',e=>{
   if(act==='regelijk'){ S.mode={}; render(); paintVerdeling(); }
   if(act==='xlsx') makeXlsx().catch(err=>{ console.error(err); alert('Het Excel-bestand kon niet worden gemaakt: '+err.message); });
   if(act==='print'){ buildReport(); window.print(); }
+  if(act==='verzend') verzend();
+  if(act==='verzendopnieuw'){ S.verzonden=null; save(); render(); }
   if(act==='savefile'){ download(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}), fname('voortgang')+'.json'); }
 });
 document.addEventListener('input',e=>{
   const t=e.target;
+  if(t.dataset.c){ const c=(S.contact ||= {}); c[t.dataset.c]=t.type==='checkbox'?t.checked:t.value; if(t.type!=='checkbox'&&t.value.trim()) t.classList.remove('err'); save(); return; }
   if(t.dataset.f){ S[t.dataset.f]=t.value; if(t.value.trim()) t.classList.remove('err'); if(t.dataset.f==='vveAdres') acZoek(t); if(t.dataset.f==='offerteGebouw'){ M.forEach(m=>{ if(S.mode[m.k]!=='hand') herverdeel(m.k); }); } updateLive(); save(); return; }
   const wEl=t.closest('[data-w]');
   if(t.dataset.wf && wEl){ const w=S.woningen.find(x=>x.id==wEl.dataset.w); w[t.dataset.wf]=t.value; save();
@@ -812,7 +887,7 @@ async function oppervlakkenPand(pandId){
 // Welke maatregel welk oppervlak krijgt (100% voorgevuld, 70%-eis zelf getoetst).
 const OPP3D={J:{veld:'dak',wat:'het hele dak'},L:{veld:'vloer',wat:'de hele begane-grondvloer'}};
 // Alleen een bovengrens tonen (niet voorinvullen): offerte boven het maximum geeft een waarschuwing.
-const MAX3D={G:{veld:'muur'}};
+const MAX3D={G:{veld:'muur'},H:{veld:'muur'},I:{veld:'muur'}};
 async function vulOppervlakken(tok,panden){
   const res=await perStuk(panden,4,pid=>oppervlakkenPand(pid).catch(e=>{ console.warn('3D BAG pand',pid,e); return null; }));
   if(tok!==vulToken) return;
@@ -1046,7 +1121,7 @@ function buildCells(){
   s2.I26=sum2;
   return {s1,s2};
 }
-async function makeXlsx(){
+async function makeXlsx(opts={download:true}){
   if(typeof JSZip==='undefined') throw new Error('de bibliotheek om Excel te maken kon niet laden (geen internet?)');
   syncVerdeling();
   const zip=await JSZip.loadAsync(TEMPLATE_B64,{base64:true});
@@ -1056,7 +1131,7 @@ async function makeXlsx(){
   zip.file(p2, patchSheet(await zip.file(p2).async('string'), s2));
   zip.file(pw, (await zip.file(pw).async('string')).replace(/<calcPr([^/]*)\/>/,(m,a)=>`<calcPr${a.replace(/\s*fullCalcOnLoad="[^"]*"/,'')} fullCalcOnLoad="1"/>`));
   const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
-  download(blob, fname('Rekentool')+'.xlsx');
+  if(opts.download) download(blob, fname('Rekentool')+'.xlsx');
   return blob;
 }
 function buildReport(){
