@@ -363,7 +363,7 @@ function checks(){
   let onvolledig=0, bd=0;
   S.woningen.forEach(w=>{
     if(!w.straat||!w.nr||!w.plaats||!w.woz||!w.eig||!w.label) onvolledig++;
-    else if(w.label==='Onbekend' && bouwdelen(w).length<2) bd++;
+    else if(w.label==='Onbekend' && !w.bdGeen && bouwdelen(w).length<2) bd++;
   });
   if(onvolledig) err.push({s:2,t:`${onvolledig} woning(en) zijn nog niet volledig ingevuld (adres, WOZ, eigenaar of energielabel).`});
   if(bd) err.push({s:2,t:`${bd} woning(en) met onbekend energielabel hebben nog geen 2 slechte bouwdelen.`});
@@ -386,6 +386,8 @@ function checks(){
   });
   if(S.bouwjaar>=BOUWJAAR_VOOR) warn.push({s:1,t:`Het gebouw is volgens de BAG in ${S.bouwjaar} gebouwd. De regeling geldt voor gebouwen die vóór ${BOUWJAAR_VOOR} zijn opgeleverd.`});
   Object.keys(MAX3D).forEach(k=>{ const t=S.mt[k], max=S.opp3d?.[k]; if(t?.on&&max&&num(t.offerte)>max) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan alle buitenmuren samen volgens 3D BAG (${nf.format(max)} m²). Controleer de offerte.`}); });
+  const geenSlecht=S.woningen.filter(w=>w.label==='Onbekend'&&w.bdGeen).length;
+  if(geenSlecht) warn.push({s:2,t:`${geenSlecht} woning(en) zonder energielabel zijn opgegeven als goed geïsoleerd. Op de rekentool wordt bij een onbekend label een opsomming van minimaal 2 slechte bouwdelen gevraagd. Controleer of deze woningen mee kunnen doen.`});
   const goed=S.woningen.filter(w=>['A','B','C'].includes(w.label));
   if(goed.length) warn.push({s:2,t:`${goed.length} woning(en) hebben energielabel A, B of C. Op de rekentool staat "evt. aanwezig (slecht) energielabel (D t/m G)". Controleer of deze woningen mee kunnen doen.`});
   act.filter(m=>!m.perWoning && S.mode[m.k]==='hand').forEach(m=>{
@@ -395,7 +397,7 @@ function checks(){
   if(b>0 && totaal()/b>=MAX_PER_WONING) warn.push({s:4,t:'De gemiddelde subsidie per woning is € 4.000 of meer (VOLDOET NIET op het rekenblad).'});
   return {err,warn};
 }
-function bouwdelen(w){ return [...(w.bd||[]), ...(w.bdAnders?[w.bdAnders]:[])].filter(Boolean); }
+function bouwdelen(w){ if(w.bdGeen) return ['Geen (goed geïsoleerd)']; return [...(w.bd||[]), ...(w.bdAnders?[w.bdAnders]:[])].filter(Boolean); }
 
 /* ======= Weergave ======= */
 function renderSteps(){
@@ -547,10 +549,11 @@ function wCard(w,i){
       <label><span class="mini">Eigenaar</span>${sel('',w.eig,['','eigenaar-bewoner','eigenaar-verhuurder'],['Kies…','Eigenaar-bewoner','Eigenaar-verhuurder'],`data-wf="eig" class="${e('eig')}"`)}</label>
       <label><span class="mini">Energielabel</span>${sel('',w.label,['','D','E','F','G','Onbekend',...('ABC'.includes(w.label)&&w.label?[w.label]:[])],['Kies…','D','E','F','G','Geen / onbekend',...('ABC'.includes(w.label)&&w.label?[w.label+' (EP-Online)']:[])],`data-wf="label" class="${e('label')}"`)}</label>
     </div>
-    ${w.label==='Onbekend'?`<div class="bd"><span class="mini" style="color:var(--text);font-weight:600">Welke bouwdelen zijn slecht geïsoleerd? (minimaal 2)</span>
-      <div class="chips">${BOUWDELEN.map(b=>`<label><input type="checkbox" data-bd="${esc(b)}" ${(w.bd||[]).includes(b)?'checked':''}>${esc(b)}</label>`).join('')}</div>
-      <input type="text" data-wf="bdAnders" value="${esc(w.bdAnders||'')}" placeholder="Anders, namelijk…">
-      ${t&&bdn<2?'<span class="fielderr">Kies minimaal 2 bouwdelen.</span>':''}</div>`:''}
+    ${w.label==='Onbekend'?`<div class="bd"><span class="mini" style="color:var(--text);font-weight:600">Welke bouwdelen zijn slecht geïsoleerd? (minimaal 2, of "Geen")</span>
+      <div class="chips">${BOUWDELEN.map(b=>`<label><input type="checkbox" data-bd="${esc(b)}" ${(w.bd||[]).includes(b)?'checked':''} ${w.bdGeen?'disabled':''}>${esc(b)}</label>`).join('')}</div>
+      <div class="chips"><label><input type="checkbox" data-bdgeen ${w.bdGeen?'checked':''}>Geen, de woning is goed geïsoleerd</label></div>
+      <input type="text" data-wf="bdAnders" value="${esc(w.bdAnders||'')}" placeholder="Anders, namelijk…" ${w.bdGeen?'disabled':''}>
+      ${t&&bdn<2&&!w.bdGeen?'<span class="fielderr">Kies minimaal 2 bouwdelen, of "Geen".</span>':''}</div>`:''}
   </div>`;
 }
 function parseNrs(s){
@@ -833,6 +836,7 @@ document.addEventListener('input',e=>{
     else { const h=wEl.querySelector('.head b'); h.textContent=`${S.woningen.indexOf(w)+1}. ${adres(w)}`; t.classList.toggle('err',!!S._try2&&!t.value&&t.dataset.wf!=='toev'&&t.dataset.wf!=='bdAnders'); }
     return; }
   if(t.dataset.bd && wEl){ const w=S.woningen.find(x=>x.id==wEl.dataset.w); w.bd=(w.bd||[]).filter(b=>b!==t.dataset.bd); if(t.checked) w.bd.push(t.dataset.bd); save(); if(S._try2) render(); return; }
+  if(t.hasAttribute?.('data-bdgeen') && wEl){ const w=S.woningen.find(x=>x.id==wEl.dataset.w); w.bdGeen=t.checked; if(t.checked){ w.bd=[]; w.bdAnders=''; } save(); render(); return; }
   if(t.id&&t.id.startsWith('all-')&&t.value){ const f=t.id.slice(4); S.woningen.forEach(w=>w[f]=t.value); render(); return; }
   const mEl=t.closest('[data-m]');
   if(mEl){ const k=mEl.dataset.m; const st=(S.mt[k] ||= {});
