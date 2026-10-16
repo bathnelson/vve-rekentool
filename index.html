@@ -477,23 +477,12 @@ function vVvE(){
 
 function vWoningen(){
   const b=B(), a=A();
+  // Gevonden via de VvE-clusterindex: dan is handmatig adressen toevoegen niet nodig.
+  const auto=S.clusterOk&&S.bron==='pdok'&&b>0;
   const cnt = k=>S.woningen.filter(w=>w.eig===k).length;
   return `<div class="card">
     <h2>Woningen in deze aanvraag</h2>
-    ${PRE?`<div class="note ok">De adressen hieronder komen uit de adresverkenner. Controleer ze, vul lege velden aan en verwijder woningen die niet meedoen.</div>`:'<p>Voeg de adressen toe van de woningen waarvoor u subsidie aanvraagt. Heeft u veel woningen in dezelfde straat? Voeg ze in één keer toe.</p>'}
-    <div class="bulk">
-      <h3>Snel adressen toevoegen</h3>
-      <div class="g">
-        <label class="fld"><span class="l">Straat</span><input type="text" id="bStraat" value="${esc(S.woningen.at(-1)?.straat||'')}"></label>
-        <label class="fld"><span class="l">Huisnummers</span><input type="text" id="bNrs" placeholder="1-24 of 2, 4, 6"></label>
-        <label class="fld"><span class="l">Toevoegingen</span><input type="text" id="bToev" placeholder="leeg, of A, B, C"></label>
-        <label class="fld"><span class="l">Woonplaats</span><input type="text" id="bPlaats" value="${esc(S.woningen.at(-1)?.plaats||'Haarlem')}"></label>
-      </div>
-      <p class="hint" style="margin:-4px 0 10px">Voorbeeld: huisnummers <b>10-14</b> en toevoegingen <b>A, B</b> maakt 10A, 10B, 11A, 11B … 14B.</p>
-      <div class="row"><button class="btn primary small" data-act="bulk">Toevoegen</button>
-      <button class="btn small" data-act="addone">+ Eén adres toevoegen</button>
-      <span id="bulkmsg" class="small muted"></span></div>
-    </div>
+    ${auto?`<div class="note ok">Deze woningen zijn opgehaald bij het adres van de VvE (${esc(S.vveAdres)}). Controleer ze, vul lege velden aan en verwijder woningen die niet meedoen.</div>`:vBulk()}
     ${b?`
     <div class="note ${a&&b>a?'err':'info'}">
       <b>${b}</b> woning${b===1?'':'en'} in de aanvraag${a?` (van de ${a} in het gebouw)`:''} ·
@@ -517,6 +506,22 @@ function vWoningen(){
     <button class="btn small danger" data-act="clearall">Alle adressen verwijderen</button></div>
     `:`<p class="muted">Nog geen adressen toegevoegd.</p>`}
   </div>`;
+}
+function vBulk(){
+  return `${PRE?`<div class="note ok">De adressen hieronder komen uit de adresverkenner. Controleer ze, vul lege velden aan en verwijder woningen die niet meedoen.</div>`:'<p>Voeg de adressen toe van de woningen waarvoor u subsidie aanvraagt. Heeft u veel woningen in dezelfde straat? Voeg ze in één keer toe.</p>'}
+    <div class="bulk">
+      <h3>Snel adressen toevoegen</h3>
+      <div class="g">
+        <label class="fld"><span class="l">Straat</span><input type="text" id="bStraat" value="${esc(S.woningen.at(-1)?.straat||'')}"></label>
+        <label class="fld"><span class="l">Huisnummers</span><input type="text" id="bNrs" placeholder="1-24 of 2, 4, 6"></label>
+        <label class="fld"><span class="l">Toevoegingen</span><input type="text" id="bToev" placeholder="leeg, of A, B, C"></label>
+        <label class="fld"><span class="l">Woonplaats</span><input type="text" id="bPlaats" value="${esc(S.woningen.at(-1)?.plaats||'Haarlem')}"></label>
+      </div>
+      <p class="hint" style="margin:-4px 0 10px">Voorbeeld: huisnummers <b>10-14</b> en toevoegingen <b>A, B</b> maakt 10A, 10B, 11A, 11B … 14B.</p>
+      <div class="row"><button class="btn primary small" data-act="bulk">Toevoegen</button>
+      <button class="btn small" data-act="addone">+ Eén adres toevoegen</button>
+      <span id="bulkmsg" class="small muted"></span></div>
+    </div>`;
 }
 function sel(id,val,vals,labels,attrs=''){
   return `<select ${attrs} ${id?`id="${id}"`:''}>${vals.map((v,i)=>`<option value="${esc(v)}" ${v===val?'selected':''}>${esc(labels[i])}</option>`).join('')}</select>`;
@@ -902,7 +907,7 @@ async function vulVvE(locId){
     if(S.woningen.length && !confirm(`Er staan al ${S.woningen.length} woningen bij stap 3. Vervangen door de ${vbos.length} woningen van deze VvE?`)){ setVveStatus(null); return; }
     const t=fromPre(data,{mt:{}});
     t.woningen.forEach((w,i)=>{ w.nummeraanduiding=vbos[i].hoofdadres_identificatie; w.wozWaarde=null; });
-    S.woningen=t.woningen; S.A=String(vbos.length); S.verdeling={}; S.mode={}; S.bron='pdok'; S.bouwjaar=num(pandProps.bouwjaar)||null;
+    S.woningen=t.woningen; S.A=String(vbos.length); S.verdeling={}; S.mode={}; S.bron='pdok'; S.clusterOk=clusterOk; S.bouwjaar=num(pandProps.bouwjaar)||null;
     const a=document.querySelector('[data-f=A]'); if(a){ a.value=S.A; a.classList.remove('err'); }
     save(); updateLive();
     setVveStatus({soort:clusterOk?'ok':'warn',tekst:`<b>${vbos.length} woning${vbos.length===1?'':'en'}</b> gevonden${panden.length>1?` in ${panden.length} panden`:''} en klaargezet bij stap 3, met energielabels. Controleer ze daar.`
