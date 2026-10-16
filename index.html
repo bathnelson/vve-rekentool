@@ -372,7 +372,7 @@ function checks(){
   act.forEach(m=>{
     const t=S.mt[m.k];
     if(!m.perWoning && !(num(t.offerte)>0)) err.push({s:3,t:`${m.naam}: vul het aantal m² uit de offerte in.`});
-    if(m.k==='J' && S.dak){ if(dakPct()<70) err.push({s:3,t:`${m.naam}: ${nf.format(num(t.offerte))} m² is ${nf.format(Math.round(dakPct()))}% van het dak (${nf.format(S.dak.totaal)} m²); minimaal 70% is vereist.`}); }
+    if(S.opp3d?.[m.k]){ if(oppPct(m.k)<70) err.push({s:3,t:`${m.naam}: ${nf.format(num(t.offerte))} m² is ${nf.format(Math.round(oppPct(m.k)))}% van ${OPP3D[m.k].wat} (${nf.format(S.opp3d[m.k])} m²); minimaal 70% is vereist.`}); }
     else if(m.min==='70' && !t.ok70) err.push({s:3,t:`${m.naam}: bevestig dat het om ${m.minTekst} gaat.`});
     if(!t.eisOk) err.push({s:3,t:`${m.naam}: bevestig dat de offerte voldoet aan de eis (${m.eis}).`});
   });
@@ -419,7 +419,7 @@ function updateLive(){
   $('#navsum').innerHTML = S.step===0?'':`<b>${eur.format(t)}</b><span class="d">${b} woning${b===1?'':'en'} · gem. ${eur.format(b?t/b:0)} per woning</span><span class="m">subsidie totaal</span>`;
   document.querySelectorAll('[data-live]').forEach(el=>{
     const [kind,key]=el.dataset.live.split(':');
-    if(kind==='dakpct'){ if(S.dak){ el.innerHTML=dakPctHtml(); el.className=`note ${dakPct()>=70?'ok':'warn'} small`; } return; }
+    if(kind==='opppct'){ if(S.opp3d?.[key]){ el.innerHTML=oppPctHtml(key); el.className=`note ${oppPct(key)>=70?'ok':'warn'} small`; } return; }
     if(kind==='deel'){ const m=MK[key]; el.innerHTML=`<b>${nf.format(r2(deelM2(m)))} m²</b> voor ${b} woning${b===1?'':'en'} · ${eur.format(deelM2(m)*m.tarief)}<span class="hint">Per woning ${nf.format(perWoningGelijk(m))} m²</span>`; }
     if(kind==='vent'){ el.innerHTML=`<b>${b} woning${b===1?'':'en'}</b> × ${eur.format(1000)} = ${eur.format(b*1000)}<span class="hint">Bij stap 5 kunt u woningen uitzetten.</span>`; }
   });
@@ -583,12 +583,12 @@ function vMaatregelen(){
     ${GROUPS.map(g=>`<div class="grp"><h3>${g.titel}</h3><p>${g.tekst}</p>${M.filter(m=>m.grp===g.id).map(mtCard).join('')}</div>`).join('')}
   </div>`;
 }
-function dakPct(){ return S.dak?.totaal ? num(S.mt.J?.offerte)/S.dak.totaal*100 : 0; }
-function dakPctHtml(){
-  const p=dakPct(), tot=nf.format(S.dak.totaal);
-  return `Het hele dak is volgens 3D BAG <b>${tot} m²</b>${S.dak.van>1?` (${S.dak.van} panden)`:''}; dat hebben we als 100% voorgevuld. `
-    +(num(S.mt.J?.offerte)?`U vult nu <b>${nf.format(Math.round(p))}%</b> van het dak in${p>=70?' — dat voldoet aan de eis van minimaal 70%.':' — <b>dat is minder dan de vereiste 70%</b>.'}`:'')
-    +`<span class="hint">Neem het aantal m² uit de offerte over als dat afwijkt. 3D BAG meet de echte, schuine dakoppervlakte.</span>`;
+function oppPct(k){ const tot=S.opp3d?.[k]; return tot ? num(S.mt[k]?.offerte)/tot*100 : 0; }
+function oppPctHtml(k){
+  const p=oppPct(k), tot=nf.format(S.opp3d[k]), van=S.opp3d.van;
+  return `${OPP3D[k].wat[0].toUpperCase()+OPP3D[k].wat.slice(1)} is volgens 3D BAG <b>${tot} m²</b>${van>1?` (${van} panden)`:''}; dat hebben we als 100% voorgevuld. `
+    +(num(S.mt[k]?.offerte)?`U vult nu <b>${nf.format(Math.round(p))}%</b> in${p>=70?' — dat voldoet aan de eis van minimaal 70%.':' — <b>dat is minder dan de vereiste 70%</b>.'}`:'')
+    +`<span class="hint">Neem het aantal m² uit de offerte over als dat afwijkt.${k==='J'?' 3D BAG meet de echte, schuine dakoppervlakte.':' 3D BAG meet de grondoppervlakte van het gebouw.'}</span>`;
 }
 function mtCard(m){
   const t=S.mt[m.k]||{}; const on=!!t.on; const tr=S._try3;
@@ -604,7 +604,7 @@ function mtCard(m){
         <div class="out" data-live="deel:${m.k}"></div>
       </div>`}
       <label class="confirm"><input type="checkbox" data-mf="eisOk" ${t.eisOk?'checked':''}><span>De offerte voldoet aan de eis: <b>${m.eis}</b>${tr&&!t.eisOk?' <span class="fielderr">Graag bevestigen.</span>':''}</span></label>
-      ${m.k==='J'&&S.dak?`<div class="note ${dakPct()>=70?'ok':'warn'} small" style="margin:10px 0 0" data-live="dakpct:J">${dakPctHtml()}</div>`
+      ${S.opp3d?.[m.k]?`<div class="note ${oppPct(m.k)>=70?'ok':'warn'} small" style="margin:10px 0 0" data-live="opppct:${m.k}">${oppPctHtml(m.k)}</div>`
         :m.min==='70'?`<label class="confirm"><input type="checkbox" data-mf="ok70" ${t.ok70?'checked':''}><span>Het gaat om ${m.minTekst}${tr&&!t.ok70?' <span class="fielderr">Graag bevestigen.</span>':''}</span></label>`:''}
     </div>`:''}
   </div>`;
@@ -779,34 +779,39 @@ const LOKAAL=['localhost','127.0.0.1'].includes(location.hostname);
 const ORVELIS_URL=LOKAAL?'http://localhost:8788/orvelis.php':'https://adresverkenner.nl/helpers/orvelis.php';
 const EP_PROXY_URL='https://adresverkenner.nl/helpers/ep-proxy.php';
 const THREEDBAG_PROXY_URL='https://adresverkenner.nl/helpers/3dbag-proxy.php';
-// Dakoppervlak zoals de dakcheck van de adresverkenner: LOD2.2-dakvlakken (RoofSurface) uit 3D BAG,
-// per vlak de echte (hellingshoek-gecorrigeerde) oppervlakte via Newell, vlakjes < 1 m² negeren.
-// Terugval: de pandattributen b3_opp_dak_plat + b3_opp_dak_schuin.
+// Oppervlakken zoals de dakcheck van de adresverkenner: LOD2.2-vlakken uit 3D BAG, per vlak de echte
+// (hellingshoek-gecorrigeerde) oppervlakte via Newell, vlakjes < 1 m² negeren.
+// Dak = RoofSurface (terugval b3_opp_dak_plat + b3_opp_dak_schuin), vloer = GroundSurface (terugval b3_opp_grond).
 function vlakOpp3D(pts){ let nx=0,ny=0,nz=0; for(let i=0;i<pts.length;i++){ const [x1,y1,z1]=pts[i],[x2,y2,z2]=pts[(i+1)%pts.length]; nx+=(y1-y2)*(z1+z2); ny+=(z1-z2)*(x1+x2); nz+=(x1-x2)*(y1+y2); } return Math.sqrt(nx*nx+ny*ny+nz*nz)/2; }
-async function dakOppervlakPand(pandId){
+async function oppervlakkenPand(pandId){
   const d=await getJson(`${THREEDBAG_PROXY_URL}?pandid=${encodeURIComponent(pandId)}`);
   if(d._httpStatus>=400) throw new Error('3D BAG '+d._httpStatus);
   const objs=d.feature?.CityObjects||{}, pand=objs[d._objectId], tf=d.metadata?.transform, vs=d.feature?.vertices;
   if(!pand) throw new Error('geen 3D BAG-model');
-  let som=0;
+  const som={RoofSurface:0,GroundSurface:0};
   if(pand.children?.length&&tf&&vs){
     const [sx,sy,sz]=tf.scale,[tx,ty,tz]=tf.translate, echt=vi=>{ const [x,y,z]=vs[vi]; return [x*sx+tx,y*sy+ty,z*sz+tz]; };
     pand.children.forEach(cid=>{ const g=objs[cid]?.geometry?.find(g=>g.lod==='2.2'); if(!g?.semantics) return;
-      g.boundaries[0].forEach((face,i)=>{ if(g.semantics.surfaces[g.semantics.values[0][i]]?.type!=='RoofSurface') return;
-        const a=vlakOpp3D(face[0].map(echt)); if(a>=1) som+=a; }); });
+      g.boundaries[0].forEach((face,i)=>{ const type=g.semantics.surfaces[g.semantics.values[0][i]]?.type; if(!(type in som)) return;
+        const a=vlakOpp3D(face[0].map(echt)); if(a>=1) som[type]+=a; }); });
   }
-  if(!som){ const at=pand.attributes||{}; som=(at.b3_opp_dak_plat||0)+(at.b3_opp_dak_schuin||0); }
-  return som;
+  const at=pand.attributes||{};
+  return { dak: som.RoofSurface || (at.b3_opp_dak_plat||0)+(at.b3_opp_dak_schuin||0), vloer: som.GroundSurface || at.b3_opp_grond || 0 };
 }
-async function vulDak(tok,panden){
-  const opp=await perStuk(panden,4,pid=>dakOppervlakPand(pid).catch(e=>{ console.warn('3D BAG pand',pid,e); return null; }));
+// Welke maatregel welk oppervlak krijgt (100% voorgevuld, 70%-eis zelf getoetst).
+const OPP3D={J:{veld:'dak',wat:'het hele dak'},L:{veld:'vloer',wat:'de hele begane-grondvloer'}};
+async function vulOppervlakken(tok,panden){
+  const res=await perStuk(panden,4,pid=>oppervlakkenPand(pid).catch(e=>{ console.warn('3D BAG pand',pid,e); return null; }));
   if(tok!==vulToken) return;
-  const geldig=opp.filter(x=>x>0);
-  if(!geldig.length){ S.dak=null; save(); return; }
-  const totaal=Math.round(geldig.reduce((a,b)=>a+b,0)*10)/10;
-  S.dak={totaal,panden:geldig.length,van:panden.length};
-  // 100% van het dak voorinvullen, alleen als er nog niets is ingevuld (maatregel blijft uit tot de gebruiker hem kiest).
-  const t=(S.mt.J ||= {}); if(!num(t.offerte)) t.offerte=String(totaal).replace('.',',');
+  const geldig=res.filter(Boolean);
+  S.opp3d={van:panden.length};
+  Object.entries(OPP3D).forEach(([k,c])=>{
+    const tot=Math.round(geldig.reduce((a,r)=>a+(r[c.veld]||0),0)*10)/10;
+    if(!tot) return;
+    S.opp3d[k]=tot;
+    // Alleen invullen als er nog niets staat; de maatregel zelf blijft uit tot de gebruiker hem kiest.
+    const t=(S.mt[k] ||= {}); if(!num(t.offerte)) t.offerte=String(tot).replace('.',',');
+  });
   save();
   if(S.step===3) render();
 }
@@ -949,7 +954,7 @@ async function vulVvE(locId){
     if(S.woningen.length && !confirm(`Er staan al ${S.woningen.length} woningen bij stap 3. Vervangen door de ${vbos.length} woningen van deze VvE?`)){ setVveStatus(null); return; }
     const t=fromPre(data,{mt:{}});
     t.woningen.forEach((w,i)=>{ w.nummeraanduiding=vbos[i].hoofdadres_identificatie; w.wozWaarde=null; });
-    S.woningen=t.woningen; S.A=String(vbos.length); S.verdeling={}; S.mode={}; S.bron='pdok'; S.clusterOk=clusterOk; S.dak=null; S.bouwjaar=num(pandProps.bouwjaar)||null;
+    S.woningen=t.woningen; S.A=String(vbos.length); S.verdeling={}; S.mode={}; S.bron='pdok'; S.clusterOk=clusterOk; S.opp3d=null; S.bouwjaar=num(pandProps.bouwjaar)||null;
     const a=document.querySelector('[data-f=A]'); if(a){ a.value=S.A; a.classList.remove('err'); }
     save(); updateLive();
     setVveStatus({soort:clusterOk?'ok':'warn',tekst:`<b>${vbos.length} woning${vbos.length===1?'':'en'}</b> gevonden${panden.length>1?` in ${panden.length} panden`:''} en klaargezet bij stap 3, met energielabels. Controleer ze daar.`
@@ -957,7 +962,7 @@ async function vulVvE(locId){
       +(clusterOk?'':`<br>${clusterReden} Dit zijn daarom alleen de woningen in dit ene pand. Hoort er nog een ander pand bij de VvE? Voeg die adressen dan bij stap 3 toe.`),
       bezig:true,wozTekst:'WOZ-waarden (1-1-2023) ophalen…'});
     vulWoz(tok);
-    vulDak(tok,panden);
+    vulOppervlakken(tok,panden);
   }catch(e){
     console.warn('VvE ophalen mislukt',e);
     if(nog()) setVveStatus({soort:'warn',tekst:'De woningen van dit adres konden niet automatisch worden opgehaald. U kunt ze bij stap 3 zelf toevoegen.'});
