@@ -12,6 +12,7 @@
   --border:#d6ddd6; --accent:#1f6f4a; --accent-ink:#ffffff; --accent-soft:#e2f0e8;
   --danger:#b3261e; --danger-soft:#fbe9e7; --warn:#8a5a00; --warn-soft:#fff4dc;
   --ok:#1f6f4a; --ok-soft:#e2f0e8; --focus:#2f7dd1; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 16px rgba(0,0,0,.05);
+  --todo:#fff5cc; --todo-border:#e3c14f;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -19,6 +20,7 @@
     --border:#333d37; --accent:#5cc28d; --accent-ink:#0d1a13; --accent-soft:#1e3328;
     --danger:#ff8a80; --danger-soft:#3a1f1d; --warn:#f2c46b; --warn-soft:#352b14;
     --ok:#5cc28d; --ok-soft:#1e3328; --focus:#7ab4f0; --shadow:none;
+    --todo:#3a3116; --todo-border:#8a6d1f;
   }
 }
 :root[data-theme="dark"]{
@@ -26,6 +28,7 @@
   --border:#333d37; --accent:#5cc28d; --accent-ink:#0d1a13; --accent-soft:#1e3328;
   --danger:#ff8a80; --danger-soft:#3a1f1d; --warn:#f2c46b; --warn-soft:#352b14;
   --ok:#5cc28d; --ok-soft:#1e3328; --focus:#7ab4f0; --shadow:none;
+    --todo:#3a3116; --todo-border:#8a6d1f;
 }
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -157,6 +160,7 @@ table.vd td input[type=checkbox]{width:20px;height:20px;min-height:0;accent-colo
 table.vd tfoot td{font-weight:650;background:var(--surface-2)}
 table.vd td.bad{color:var(--danger);font-weight:700}
 table.vd td.cellbad input{border-color:var(--danger)}
+table.vd td input.vast{font-weight:700;border-color:var(--accent)}
 table.vd .rate{display:block;font-weight:400;color:var(--muted);font-size:.78rem}
 
 /* controle */
@@ -186,6 +190,12 @@ summary{cursor:pointer;font-weight:600}
 .ac-list .place{display:flex;align-items:center;gap:4px;font-size:.85rem;color:var(--muted)}
 .ac-list .place svg{width:.9em;height:.9em;flex:none}
 .vvestatus{margin-top:8px}
+/* verplichte velden die nog leeg zijn */
+input.leeg,select.leeg{background:var(--todo);border-color:var(--todo-border)}
+input.leeg.err,select.leeg.err{border-color:var(--danger)}
+.confirm.leeg{background:var(--todo);border-radius:8px;padding:6px 8px;margin-left:-8px}
+.won .bd.leeg{background:var(--todo);outline:1.5px solid var(--todo-border)}
+.legenda{display:inline-block;width:.9em;height:.9em;border-radius:3px;background:var(--todo);border:1px solid var(--todo-border);vertical-align:-1px;margin-right:4px}
 #report{display:none}
 @media print{
   body{background:#fff;color:#000;font-size:10pt}
@@ -206,7 +216,7 @@ summary{cursor:pointer;font-weight:600}
   <div class="wrap">
     <div class="kop"><h1>Rekenhulp subsidie verduurzaming Haarlemse VvE's 2026</h1>
       <button class="btn small" data-act="reset" title="Alle ingevulde gegevens wissen" aria-label="Opnieuw beginnen">↺ Opnieuw<span class="lang"> beginnen</span></button></div>
-    <p class="sub">Vul stap voor stap in. Aan het eind krijgt u de ingevulde rekentool (Excel) en een overzicht om als PDF bij uw aanvraag te voegen.</p>
+    <p class="sub">Vul stap voor stap in. Aan het eind krijgt u de ingevulde rekentool (Excel) en een overzicht om als PDF bij uw aanvraag te voegen. <span style="white-space:nowrap"><span class="legenda"></span>Gele velden moeten nog worden ingevuld.</span></p>
     <ol class="steps" id="steps"></ol>
   </div>
 </header>
@@ -336,15 +346,23 @@ function perWoningGelijk(m){
 }
 function vdGet(w,k){ return S.verdeling[w.id]?.[k] ?? 0; }
 function vdSet(w,k,v){ (S.verdeling[w.id] ||= {})[k]=v; }
+// Zelf ingevulde cellen (S.vast[k] = woning-id's) blijven staan; de rest van de m² uit de offerte
+// wordt gelijk over de overige woningen verdeeld. Afrondingsrest naar de laatste, zodat het totaal klopt.
+function vastIds(k){ const ids=new Set(S.woningen.map(w=>w.id)); return (S.vast?.[k]||[]).filter(id=>ids.has(id)); }
 function herverdeel(k){
   const m=MK[k];
-  S.woningen.forEach(w=>vdSet(w,k, m.perWoning ? (S.mt[k]?.on?1:0) : perWoningGelijk(m)));
+  if(m.perWoning){ S.woningen.forEach(w=>vdSet(w,k,S.mt[k]?.on?1:0)); return; }
+  const vast=new Set(vastIds(k));
+  const vrij=S.woningen.filter(w=>!vast.has(w.id)); if(!vrij.length) return;
+  const rest=Math.max(0, deelM2(m)-S.woningen.filter(w=>vast.has(w.id)).reduce((s,w)=>s+num(vdGet(w,k)),0));
+  const per=r2(rest/vrij.length);
+  vrij.forEach((w,i)=>vdSet(w,k, i<vrij.length-1 ? per : Math.max(0,r2(rest-per*(vrij.length-1)))));
 }
 function syncVerdeling(){
   M.forEach(m=>{
     if(!S.mt[m.k]?.on){ S.woningen.forEach(w=>vdSet(w,m.k,0)); return; }
-    if(S.mode[m.k]!=='hand') herverdeel(m.k);
-    else S.woningen.forEach(w=>{ if(S.verdeling[w.id]?.[m.k]===undefined) vdSet(w,m.k,m.perWoning?1:0); });
+    if(m.perWoning && S.mode[m.k]==='hand') S.woningen.forEach(w=>{ if(S.verdeling[w.id]?.[m.k]===undefined) vdSet(w,m.k,1); });
+    else herverdeel(m.k);
   });
 }
 function bedragWoning(w){ return actief().reduce((s,m)=>s+num(vdGet(w,m.k))*m.tarief,0); }
@@ -390,9 +408,9 @@ function checks(){
   if(geenSlecht) warn.push({s:2,t:`${geenSlecht} woning(en) zonder energielabel zijn opgegeven als goed geïsoleerd. Op de rekentool wordt bij een onbekend label een opsomming van minimaal 2 slechte bouwdelen gevraagd. Controleer of deze woningen mee kunnen doen.`});
   const goed=S.woningen.filter(w=>['A','B','C'].includes(w.label));
   if(goed.length) warn.push({s:2,t:`${goed.length} woning(en) hebben energielabel A, B of C. Op de rekentool staat "evt. aanwezig (slecht) energielabel (D t/m G)". Controleer of deze woningen mee kunnen doen.`});
-  act.filter(m=>!m.perWoning && S.mode[m.k]==='hand').forEach(m=>{
+  act.filter(m=>!m.perWoning).forEach(m=>{
     const verw=deelM2(m), echt=m2Totaal(m);
-    if(Math.abs(verw-echt)>0.05) warn.push({s:4,t:`${m.naam}: u heeft ${nf.format(echt)} m² verdeeld, op basis van de offerte is dat ${nf.format(verw)} m². Controleer of dit klopt.`});
+    if(Math.abs(verw-echt)>0.05) warn.push({s:4,t:`${m.naam}: u heeft ${nf.format(r2(echt))} m² verdeeld, op basis van de offerte is dat ${nf.format(r2(verw))} m². ${echt>verw?'De zelf ingevulde woningen zijn samen al meer dan de offerte.':'Alle woningen zijn zelf ingevuld; pas er één aan of verdeel opnieuw.'}`});
   });
   if(b>0 && totaal()/b>=MAX_PER_WONING) warn.push({s:4,t:'De gemiddelde subsidie per woning is € 4.000 of meer (VOLDOET NIET op het rekenblad).'});
   return {err,warn};
@@ -404,6 +422,20 @@ function renderSteps(){
   $('#steps').innerHTML = STEPS.map((t,i)=>`<li class="${i<S.step?'done':''} ${i===S.step?'cur':''}"><button data-go="${i}" ${i>S.step+0&&!canJump(i)?'disabled':''} aria-current="${i===S.step?'step':'false'}"><span class="n">${i+1}</span><span class="t">${t}</span></button></li>`).join('');
 }
 function canJump(i){ return i<=S.maxStep; }
+// Verplichte velden die nog leeg zijn krijgen een gele achtergrond (direct, niet pas na "Volgende").
+const VERPLICHT='[data-f=vve],[data-f=vveAdres],[data-f=A],[data-wf=straat],[data-wf=nr],[data-wf=plaats],[data-wf=woz],[data-wf=eig],[data-wf=label],[data-mf=offerte],[data-mf=eisOk],[data-mf=ok70],[data-c=naam],[data-c=email],[data-c=akkoord]';
+function markeerLeeg(){
+  document.querySelectorAll(VERPLICHT).forEach(el=>{
+    let leeg = el.type==='checkbox' ? !el.checked : !String(el.value).trim();
+    if(el.dataset.f==='A') leeg=!(num(el.value)>0);
+    if(el.dataset.mf==='offerte') leeg=!(num(el.value)>0);
+    if(el.dataset.c==='email') leeg=!MAIL_RE.test(el.value);
+    (el.type==='checkbox'?el.closest('.confirm'):el)?.classList.toggle('leeg',leeg);
+  });
+  document.querySelectorAll('.won[data-w]').forEach(c=>{ const w=S.woningen.find(x=>x.id==c.dataset.w), bd=c.querySelector('.bd');
+    if(w&&bd) bd.classList.toggle('leeg', !w.bdGeen && bouwdelen(w).length<2); });
+}
+document.addEventListener('input',()=>markeerLeeg());
 function render(){
   S.maxStep=Math.max(S.maxStep||0,S.step);
   renderSteps();
@@ -414,6 +446,7 @@ function render(){
   $('#next').textContent = S.step===0?'Beginnen →':'Volgende →';
   updateLive();
   if(S.step===4) paintVerdeling();
+  markeerLeeg();
   save();
 }
 function updateLive(){
@@ -626,16 +659,16 @@ function vVerdeling(){
   syncVerdeling();
   const act=actief();
   if(!act.length) return `<div class="card"><h2>Verdeling per woning</h2><p>U heeft nog geen maatregelen gekozen. Ga terug naar stap 4.</p></div>`;
-  const hand=act.some(m=>S.mode[m.k]==='hand');
+  const hand=act.some(m=>S.mode[m.k]==='hand'||vastIds(m.k).length);
   return `<div class="card">
     <h2>Verdeling per woning</h2>
-    <p>We hebben de m² <b>gelijk verdeeld</b> over de woningen. Klopt dat niet (bijvoorbeeld omdat alleen de bovenste woningen dakisolatie krijgen)? Pas de getallen dan aan. Per woning mag de subsidie niet hoger zijn dan <b>${eur.format(MAX_PER_WONING)}</b>.</p>
+    <p>We hebben de m² <b>gelijk verdeeld</b> over de woningen. Klopt dat niet (bijvoorbeeld omdat alleen de bovenste woningen dakisolatie krijgen)? Pas de getallen dan aan: de overige woningen krijgen dan automatisch de rest van de m² uit de offerte. Zelf ingevulde getallen zijn <b>vetgedrukt</b>. Per woning mag de subsidie niet hoger zijn dan <b>${eur.format(MAX_PER_WONING)}</b>.</p>
     ${hand?`<div class="row" style="margin-bottom:12px"><button class="btn small" data-act="regelijk">Alles weer gelijk verdelen</button></div>`:''}
     <div class="tblwrap"><table class="vd" id="vd">
       <thead><tr><th class="l">Woning</th>${act.map(m=>`<th>${m.naam}<span class="rate">${m.perWoning?'ja/nee':'m²'} · ${eur.format(m.tarief).replace(',00','')}</span></th>`).join('')}<th>Subsidie</th></tr></thead>
       <tbody>${S.woningen.map(w=>`<tr data-w="${w.id}"><td class="l">${esc(adres(w))}</td>${act.map(m=>`<td data-c="${m.k}">${m.perWoning
         ?`<input type="checkbox" data-vd="${m.k}" ${num(vdGet(w,m.k))===1?'checked':''} aria-label="${esc(m.naam)} ${esc(adres(w))}">`
-        :`<input type="text" inputmode="decimal" data-vd="${m.k}" value="${fmtIn(num(vdGet(w,m.k)))}" aria-label="${esc(m.naam)} m² ${esc(adres(w))}">`}</td>`).join('')}<td data-tot></td></tr>`).join('')}</tbody>
+        :`<input type="text" inputmode="decimal" data-vd="${m.k}" value="${fmtIn(num(vdGet(w,m.k)))}" class="${vastIds(m.k).includes(w.id)?'vast':''}" aria-label="${esc(m.naam)} m² ${esc(adres(w))}">`}</td>`).join('')}<td data-tot></td></tr>`).join('')}</tbody>
       <tfoot><tr><td class="l">Totaal</td>${act.map(m=>`<td data-ft="${m.k}"></td>`).join('')}<td data-ftot></td></tr></tfoot>
     </table></div>
     <p class="hint">Minimaal 10 m² per woning voor muur- en gevelisolatie; glas, panelen en deuren samen minimaal 3 m² per woning. Rode cellen voldoen niet.</p>
@@ -819,7 +852,7 @@ document.addEventListener('click',e=>{
   if(act==='addone'){ const last=S.woningen.at(-1); S.woningen.push(newW({straat:last?.straat||'',plaats:last?.plaats||'Haarlem'})); render(); const c=[...document.querySelectorAll('.won')].at(-1); c?.scrollIntoView({block:'center'}); c?.querySelector('[data-wf=nr]')?.focus(); }
   if(act==='del'){ const id=+a.closest('[data-w]').dataset.w; S.woningen=S.woningen.filter(w=>w.id!==id); delete S.verdeling[id]; render(); }
   if(act==='clearall'){ if(confirm('Alle adressen verwijderen?')){ S.woningen=[]; S.verdeling={}; render(); } }
-  if(act==='regelijk'){ S.mode={}; render(); paintVerdeling(); }
+  if(act==='regelijk'){ S.mode={}; S.vast={}; render(); paintVerdeling(); }
   if(act==='xlsx') makeXlsx().catch(err=>{ console.error(err); alert('Het Excel-bestand kon niet worden gemaakt: '+err.message); });
   if(act==='print'){ buildReport(); window.print(); }
   if(act==='verzend') verzend();
@@ -829,7 +862,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('input',e=>{
   const t=e.target;
   if(t.dataset.c){ const c=(S.contact ||= {}); c[t.dataset.c]=t.type==='checkbox'?t.checked:t.value; if(t.type!=='checkbox'&&t.value.trim()) t.classList.remove('err'); save(); return; }
-  if(t.dataset.f){ S[t.dataset.f]=t.value; if(t.value.trim()) t.classList.remove('err'); if(t.dataset.f==='vveAdres') acZoek(t); if(t.dataset.f==='offerteGebouw'){ M.forEach(m=>{ if(S.mode[m.k]!=='hand') herverdeel(m.k); }); } updateLive(); save(); return; }
+  if(t.dataset.f){ S[t.dataset.f]=t.value; if(t.value.trim()) t.classList.remove('err'); if(t.dataset.f==='vveAdres') acZoek(t); if(t.dataset.f==='offerteGebouw'){ M.forEach(m=>{ if(S.mt[m.k]?.on) herverdeel(m.k); }); } updateLive(); save(); return; }
   const wEl=t.closest('[data-w]');
   if(t.dataset.wf && wEl){ const w=S.woningen.find(x=>x.id==wEl.dataset.w); w[t.dataset.wf]=t.value; save();
     if(t.tagName==='SELECT'){ if(t.dataset.wf==='label'||S._try2) render(); else{ t.classList.remove('err'); updateLive(); } }
@@ -840,12 +873,19 @@ document.addEventListener('input',e=>{
   if(t.id&&t.id.startsWith('all-')&&t.value){ const f=t.id.slice(4); S.woningen.forEach(w=>w[f]=t.value); render(); return; }
   const mEl=t.closest('[data-m]');
   if(mEl){ const k=mEl.dataset.m; const st=(S.mt[k] ||= {});
-    if(t.hasAttribute('data-mon')){ st.on=t.checked; if(!t.checked) delete S.mode[k]; render(); return; }
-    if(t.dataset.mf==='offerte'){ st.offerte=t.value; t.classList.toggle('err',!!S._try3&&!(num(t.value)>0)); if(S.mode[k]!=='hand') herverdeel(k); updateLive(); save(); return; }
+    if(t.hasAttribute('data-mon')){ st.on=t.checked; if(!t.checked){ delete S.mode[k]; if(S.vast) delete S.vast[k]; } render(); return; }
+    if(t.dataset.mf==='offerte'){ st.offerte=t.value; t.classList.toggle('err',!!S._try3&&!(num(t.value)>0)); herverdeel(k); updateLive(); save(); return; }
     if(t.dataset.mf){ st[t.dataset.mf]=t.checked; save(); if(S._try3) render(); return; }
   }
   if(t.dataset.vd){ const w=S.woningen.find(x=>x.id==t.closest('tr').dataset.w); const m=MK[t.dataset.vd];
-    vdSet(w,m.k, m.perWoning?(t.checked?1:0):num(t.value)); S.mode[m.k]='hand'; save(); paintVerdeling(); updateLive();
+    vdSet(w,m.k, m.perWoning?(t.checked?1:0):num(t.value));
+    if(m.perWoning) S.mode[m.k]='hand';
+    else{
+      const v=(S.vast ||= {}); v[m.k]=[...new Set([...(v[m.k]||[]),w.id])]; t.classList.add('vast');
+      herverdeel(m.k);
+      document.querySelectorAll(`#vd [data-vd="${m.k}"]`).forEach(inp=>{ if(inp!==t){ const ww=S.woningen.find(x=>x.id==inp.closest('tr').dataset.w); inp.value=fmtIn(num(vdGet(ww,m.k))); } });
+    }
+    save(); paintVerdeling(); updateLive();
     if(!document.querySelector('[data-act=regelijk]')){ /* toon knop zonder focusverlies */ const r=document.createElement('div'); r.className='row'; r.style.marginBottom='12px'; r.innerHTML='<button class="btn small" data-act="regelijk">Alles weer gelijk verdelen</button>'; $('.tblwrap').before(r); }
   }
 });
@@ -949,7 +989,7 @@ const PIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wid
 let acT=0, acReq=0, acItems=[], acHl={}, acSel=-1;
 let vveStatus=null; // {bezig, tekst, soort}
 function vveStatusHtml(){ return vveStatus?`<div class="note ${vveStatus.soort||'info'} small" style="margin:0">${vveStatus.tekst}${vveStatus.wozTekst?`<br>${vveStatus.bezig?'⏳ ':''}${vveStatus.wozTekst}`:''}</div>`:''; }
-function setVveStatus(st){ vveStatus=st; const el=document.getElementById('vvestatus'); if(el) el.innerHTML=vveStatusHtml(); }
+function setVveStatus(st){ vveStatus=st; const el=document.getElementById('vvestatus'); if(el) el.innerHTML=vveStatusHtml(); markeerLeeg(); }
 function acEls(){ return {inp:document.querySelector('[data-f=vveAdres]'), ul:document.getElementById('ac-list')}; }
 function acSluit(){ const {inp,ul}=acEls(); if(ul){ ul.hidden=true; ul.innerHTML=''; } if(inp){ inp.setAttribute('aria-expanded','false'); inp.removeAttribute('aria-activedescendant'); } acItems=[]; acSel=-1; }
 // Zelfde weergave als de adresverkenner: straat+nr (met PDOK-highlighting) en daaronder postcode+plaats.
@@ -985,7 +1025,7 @@ function acZoek(inp){
 }
 function acKies(i){
   const d=acItems[i]; const {inp}=acEls(); if(!d||!inp) return;
-  inp.value=d.weergavenaam; S.vveAdres=d.weergavenaam; inp.classList.remove('err'); save(); acSluit();
+  inp.value=d.weergavenaam; S.vveAdres=d.weergavenaam; inp.classList.remove('err'); save(); acSluit(); markeerLeeg();
   vulVvE(d.id);
 }
 document.addEventListener('keydown',e=>{
@@ -1047,7 +1087,7 @@ async function vulVvE(locId){
     if(S.woningen.length && !confirm(`Er staan al ${S.woningen.length} woningen bij stap 3. Vervangen door de ${vbos.length} woningen van deze VvE?`)){ setVveStatus(null); return; }
     const t=fromPre(data,{mt:{}});
     t.woningen.forEach((w,i)=>{ w.nummeraanduiding=vbos[i].hoofdadres_identificatie; w.wozWaarde=null; });
-    S.woningen=t.woningen; S.A=String(vbos.length); S.verdeling={}; S.mode={}; S.bron='pdok'; S.clusterOk=clusterOk; S.opp3d=null; S.bouwjaar=num(pandProps.bouwjaar)||null;
+    S.woningen=t.woningen; S.A=String(vbos.length); S.verdeling={}; S.mode={}; S.vast={}; S.bron='pdok'; S.clusterOk=clusterOk; S.opp3d=null; S.bouwjaar=num(pandProps.bouwjaar)||null;
     const a=document.querySelector('[data-f=A]'); if(a){ a.value=S.A; a.classList.remove('err'); }
     save(); updateLive();
     setVveStatus({soort:clusterOk?'ok':'warn',tekst:`<b>${vbos.length} woning${vbos.length===1?'':'en'}</b> gevonden${panden.length>1?` in ${panden.length} panden`:''} en klaargezet bij stap 3, met energielabels. Controleer ze daar.`
