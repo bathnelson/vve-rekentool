@@ -413,6 +413,7 @@ let RESTORED=false;
 try{ const raw = localStorage.getItem(LS_KEY); if(raw){ S = Object.assign(blank(), JSON.parse(raw)); RESTORED=true; } }catch(e){}
 bdMigreer(S);
 if(S.opp3d?.L && !S.opp3d.M) S.opp3d.M=S.opp3d.L; // eerder opgehaald: bodem = grondvlak
+['J','M'].forEach(k=>{ const t=S.mt[k], tot=S.opp3d?.[k]; if(t?.autoOfferte && t.offerte===t.autoOfferte && tot){ t.offerte=t.autoOfferte=String(Math.ceil(tot*7-1e-9)/10).replace('.',','); } });
 uid = Math.max(0,...S.woningen.map(w=>w.id||0))+1;
 let saveT;
 function save(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){} },250); }
@@ -1195,7 +1196,9 @@ document.addEventListener('input',e=>{
   if(t.id&&t.id.startsWith('all-')&&t.value){ const f=t.id.slice(4); S.woningen.forEach(w=>w[f]=t.value); render(); return; }
   const mEl=t.closest('[data-m]');
   if(mEl){ const k=mEl.dataset.m; const st=(S.mt[k] ||= {});
-    if(t.hasAttribute('data-mon')){ st.on=t.checked; if(!t.checked){ delete S.mode[k]; if(S.vast) delete S.vast[k]; } render(); return; }
+    if(t.hasAttribute('data-mon')){ st.on=t.checked;
+      if(t.checked && OPP3D[k] && S.opp3d?.[k] && !num(st.offerte)){ st.offerte=st.autoOfferte=oppVoorstel(k); herverdeel(k); }
+      if(!t.checked){ delete S.mode[k]; if(S.vast) delete S.vast[k]; } render(); return; }
     if(t.dataset.mf==='offerte'){ st.offerte=t.value; t.classList.toggle('err',!!S._try3&&!(num(t.value)>0)); herverdeel(k); updateLive(); save(); return; }
     if(t.dataset.mf){ st[t.dataset.mf]=t.checked; save(); if(S._try3) render(); return; }
   }
@@ -1253,7 +1256,10 @@ async function oppervlakkenPand(pandId){
 }
 // Welke maatregel welk oppervlak krijgt (100% voorgevuld, 70%-eis zelf getoetst).
 // Bodem (kruipruimte) ligt onder de begane-grondvloer: zelfde grondvlak.
-const OPP3D={J:{veld:'dak',wat:'het hele dak'},L:{veld:'vloer',wat:'de hele begane-grondvloer'},M:{veld:'vloer',wat:'de hele bodem (grondvlak van het gebouw)'}};
+// vul = welk deel van het oppervlak wordt voorgevuld (dak en bodem: het minimum van 70%).
+const OPP3D={J:{veld:'dak',wat:'het hele dak',vul:.7},L:{veld:'vloer',wat:'de hele begane-grondvloer',vul:1},M:{veld:'vloer',wat:'de hele bodem (grondvlak van het gebouw)',vul:.7}};
+// Naar boven afgerond op 0,1 m², zodat 70% ook echt gehaald wordt.
+function oppVoorstel(k){ const tot=S.opp3d?.[k]; return tot?String(Math.ceil(tot*(OPP3D[k].vul??1)*10-1e-9)/10).replace('.',','):''; }
 // Alleen een bovengrens tonen (niet voorinvullen): offerte boven het maximum geeft een waarschuwing.
 const MAX3D={G:{veld:'muur'},H:{veld:'muur'},I:{veld:'muur'}};
 async function vulOppervlakken(tok,panden){
@@ -1267,7 +1273,7 @@ async function vulOppervlakken(tok,panden){
     if(!tot) return;
     S.opp3d[k]=tot;
     // Alleen invullen als er nog niets staat; de maatregel zelf blijft uit tot de gebruiker hem kiest.
-    const t=(S.mt[k] ||= {}); if(!num(t.offerte)) t.offerte=String(tot).replace('.',','); t.autoOfferte=String(tot).replace('.',',');
+    const t=(S.mt[k] ||= {}), v=oppVoorstel(k); if(!num(t.offerte)) t.offerte=v; t.autoOfferte=v;
   });
   save();
   if(S.step===3) render();
