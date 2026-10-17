@@ -412,6 +412,7 @@ let S = blank();
 let RESTORED=false;
 try{ const raw = localStorage.getItem(LS_KEY); if(raw){ S = Object.assign(blank(), JSON.parse(raw)); RESTORED=true; } }catch(e){}
 bdMigreer(S);
+if(S.opp3d?.L && !S.opp3d.M) S.opp3d.M=S.opp3d.L; // eerder opgehaald: bodem = grondvlak
 uid = Math.max(0,...S.woningen.map(w=>w.id||0))+1;
 let saveT;
 function save(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{localStorage.setItem(LS_KEY,JSON.stringify(S));}catch(e){} },250); }
@@ -549,6 +550,7 @@ function checks(){
     act.filter(m=>m.perWoning).forEach(m=>{ const v=num(vdGet(w,m.k)); if(v!==0&&v!==1) err.push({s:4,t:`${adres(w)}: ventilatie kan alleen 0 of 1 zijn.`}); });
   });
   if(S.bouwjaar>=BOUWJAAR_VOOR) warn.push({s:1,t:`Het gebouw is volgens de BAG in ${S.bouwjaar} gebouwd. De regeling geldt voor gebouwen die vóór ${BOUWJAAR_VOOR} zijn opgeleverd.`});
+  Object.keys(OPP3D).forEach(k=>{ const t=S.mt[k], tot=S.opp3d?.[k]; if(t?.on&&tot&&oppPct(k)>100) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan ${OPP3D[k].wat} volgens 3D BAG (${nf.format(tot)} m²). Controleer de offerte.`}); });
   Object.keys(MAX3D).forEach(k=>{ const t=S.mt[k], max=S.opp3d?.[k]; if(t?.on&&max&&num(t.offerte)>max) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan alle buitenmuren samen volgens 3D BAG (${nf.format(max)} m²). Controleer de offerte.`}); });
   if(nGeen) warn.push({s:2,t:`${nGeen} woning${nGeen===1?' heeft':'en hebben'} een WOZ-waarde van ${eur.format(WOZ_GRENS).replace(',00','')} of hoger en ${nGeen===1?'telt':'tellen'} niet mee in de aanvraag.`});
   const geenSlecht=WS().filter(w=>w.label==='Onbekend'&&bdGeen(w)).length;
@@ -628,7 +630,7 @@ function updateLive(){
   document.querySelectorAll('[data-live]').forEach(el=>{
     const [kind,key]=el.dataset.live.split(':');
     if(kind==='maxm'){ if(S.opp3d?.[key]) el.outerHTML=chkRegel('maxm',key,num(S.mt[key]?.offerte)>S.opp3d[key]?'warn':'info',maxHtml(key)); return; }
-    if(kind==='opppct'){ if(S.opp3d?.[key]) el.outerHTML=chkRegel('opppct',key,!num(S.mt[key]?.offerte)?'info':oppPct(key)>=70?'ok':'warn',oppPctHtml(key)); return; }
+    if(kind==='opppct'){ if(S.opp3d?.[key]) el.outerHTML=chkRegel('opppct',key,oppKlasse(key),oppPctHtml(key)); return; }
     if(kind==='deel'){ const m=MK[key]; el.innerHTML=`<b>${eur.format(deelM2(m)*m.tarief)}</b> subsidie<span class="hint">${nf.format(r2(deelM2(m)))} m² voor ${b} woning${b===1?'':'en'}</span>`; }
     if(kind==='vent'){ el.innerHTML=`<b>${eur.format(b*1000)}</b> subsidie<span class="hint">${b} woning${b===1?'':'en'} × € 1.000 · bij stap 5 kunt u woningen uitzetten</span>`; }
   });
@@ -871,11 +873,12 @@ function maxHtml(k){
     :`Maximaal ${nf.format(max)} m²: alle buitenmuren samen volgens 3D BAG, inclusief ramen en deuren.`;
 }
 function chkRegel(soort,k,klasse,html){ return `<div class="chk ${klasse}" data-live="${soort}:${k}"><span class="ic">${klasse==='ok'?'✓':klasse==='warn'?'!':'i'}</span><span class="tx">${html}</span></div>`; }
+function oppKlasse(k){ const p=oppPct(k); return !num(S.mt[k]?.offerte)?'info':p>=70&&p<=100?'ok':'warn'; }
 function oppPct(k){ const tot=S.opp3d?.[k]; return tot ? num(S.mt[k]?.offerte)/tot*100 : 0; }
 function oppPctHtml(k){
   const p=oppPct(k), tot=nf.format(S.opp3d[k]);
   return num(S.mt[k]?.offerte)
-    ? `${nf.format(Math.round(p))}% van ${OPP3D[k].wat} (${tot} m² volgens 3D BAG)${p>=70?'':' — minimaal 70% is vereist'}`
+    ? `${nf.format(Math.round(p))}% van ${OPP3D[k].wat} (${tot} m² volgens 3D BAG)${p<70?' — minimaal 70% is vereist':p>100?'. Dat is meer dan het hele oppervlak; controleer de offerte.':''}`
     : `${OPP3D[k].wat[0].toUpperCase()+OPP3D[k].wat.slice(1)} is ${tot} m² volgens 3D BAG`;
 }
 function mtCard(m){
@@ -893,7 +896,7 @@ function mtCard(m){
       </div>`}
       <label class="confirm"><input type="checkbox" data-mf="eisOk" ${t.eisOk?'checked':''}><span>De offerte voldoet aan de eis: <b>${m.eis}</b>${tr&&!t.eisOk?' <span class="fielderr">Graag bevestigen.</span>':''}</span></label>
       ${MAX3D[m.k]&&S.opp3d?.[m.k]?chkRegel('maxm',m.k,num(t.offerte)>S.opp3d[m.k]?'warn':'info',maxHtml(m.k)):''}
-      ${OPP3D[m.k]&&S.opp3d?.[m.k]?chkRegel('opppct',m.k,!num(t.offerte)?'info':oppPct(m.k)>=70?'ok':'warn',oppPctHtml(m.k))
+      ${OPP3D[m.k]&&S.opp3d?.[m.k]?chkRegel('opppct',m.k,oppKlasse(m.k),oppPctHtml(m.k))
         :m.min==='70'?`<label class="confirm"><input type="checkbox" data-mf="ok70" ${t.ok70?'checked':''}><span>Het gaat om ${m.minTekst}${tr&&!t.ok70?' <span class="fielderr">Graag bevestigen.</span>':''}</span></label>`:''}
     </div>`:''}
   </div>`;
@@ -1249,7 +1252,8 @@ async function oppervlakkenPand(pandId){
   return { dak: som.RoofSurface || (at.b3_opp_dak_plat||0)+(at.b3_opp_dak_schuin||0), vloer: som.GroundSurface || at.b3_opp_grond || 0, muur: at.b3_opp_buitenmuur || 0 };
 }
 // Welke maatregel welk oppervlak krijgt (100% voorgevuld, 70%-eis zelf getoetst).
-const OPP3D={J:{veld:'dak',wat:'het hele dak'},L:{veld:'vloer',wat:'de hele begane-grondvloer'}};
+// Bodem (kruipruimte) ligt onder de begane-grondvloer: zelfde grondvlak.
+const OPP3D={J:{veld:'dak',wat:'het hele dak'},L:{veld:'vloer',wat:'de hele begane-grondvloer'},M:{veld:'vloer',wat:'de hele bodem (grondvlak van het gebouw)'}};
 // Alleen een bovengrens tonen (niet voorinvullen): offerte boven het maximum geeft een waarschuwing.
 const MAX3D={G:{veld:'muur'},H:{veld:'muur'},I:{veld:'muur'}};
 async function vulOppervlakken(tok,panden){
