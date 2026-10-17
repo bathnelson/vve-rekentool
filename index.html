@@ -62,6 +62,7 @@ header.top .kop .btn{flex:none;margin-top:-2px}
 main{padding:22px 0 120px}
 .legend{font-size:.85rem;color:var(--muted);margin:0 0 10px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px;box-shadow:var(--shadow);margin-bottom:16px}
+@media (max-width:520px){.card{padding:16px 14px}}
 .intro{color:var(--muted);margin-bottom:18px}
 .lead{font-size:1.05rem}
 .muted{color:var(--muted)}
@@ -129,17 +130,18 @@ input.err,select.err{border-color:var(--danger)}
 .filter button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .wlist{border-top:1px solid var(--border)}
 .wrow{border-bottom:1px solid var(--border);padding:8px 0}
-.wrow .r1{display:grid;grid-template-columns:minmax(150px,1.4fr) 128px minmax(0,2fr) auto;grid-template-areas:"head woz vals meer";gap:8px;align-items:center}
+.wrow .r1{display:grid;grid-template-columns:minmax(150px,1.4fr) 128px auto minmax(92px,1fr) auto;grid-template-areas:"head woz seg lbl meer";gap:8px;align-items:center}
+.wrow .r2{display:contents}
 .wrow .head{grid-area:head;display:flex;flex-direction:column;min-width:0}
 .wrow .wozf{grid-area:woz;position:relative}
 .wrow .wozf::before{content:"€";position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none}
 .wrow .wozf input{min-height:38px;padding:6px 8px 6px 22px;font-size:.92rem;text-align:right;font-variant-numeric:tabular-nums}
 input.woz-ja{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:650}
 input.woz-nee{background:var(--danger-soft);border-color:var(--danger);color:var(--danger);font-weight:650}
-.wrow .vals{grid-area:vals;display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
-.wrow .vals select{flex:1 1 92px;width:auto;min-width:92px}
-.wrow .geenmsg{grid-area:vals;display:none;color:var(--danger);font-size:.88rem;font-weight:600}
-.won.geen .vals,.won.geen .bd{display:none}
+.wrow select.lbl{grid-area:lbl;width:100%;min-width:0}
+.wrow .seg.eig{grid-area:seg}
+.wrow .geenmsg{grid-column:3/5;grid-row:1;display:none;color:var(--danger);font-size:.88rem;font-weight:600}
+.won.geen .seg.eig,.won.geen select.lbl,.won.geen .bd{display:none}
 .won.geen .geenmsg{display:block}
 .won.geen .head b{color:var(--muted);font-weight:500}
 .wrow .meer{grid-area:meer}
@@ -153,7 +155,7 @@ input.woz-nee{background:var(--danger-soft);border-color:var(--danger);color:var
 select.lbl[class*="lb-"]{background-color:var(--lb);color:var(--lbi);border-color:var(--lb);font-weight:700}
 select.lbl option{background:var(--surface);color:var(--text);font-weight:400}
 .eb{display:inline-grid;place-items:center;min-width:1.5em;height:1.5em;padding:0 3px;border-radius:4px;background:var(--lb);color:var(--lbi);font-weight:800;font-size:.78rem;line-height:1;vertical-align:1px;margin-right:6px}
-.wrow .head b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrow .head b{font-weight:600;line-height:1.25;overflow-wrap:break-word}
 .wrow .head .meta{font-size:.78rem;color:var(--muted)}
 .wrow .st{width:22px;text-align:center;font-weight:700}
 .wrow .st.ok{color:var(--ok)} .wrow .st.todo{color:var(--todo-border)} .wrow .st.uit{color:var(--danger)}
@@ -189,12 +191,22 @@ select.lbl option{background:var(--surface);color:var(--text);font-weight:400}
 .sprow .seg label{padding:6px 12px;font-size:.9rem}
 .bd.bdgeb .hint{flex-basis:100%;margin:2px 0 0;font-size:.8rem}
 @media (max-width:700px){
-  .wrow .r1{grid-template-columns:1fr auto auto;grid-template-areas:"head lbl meer" "woz seg seg"}
-  .wrow .vals{display:contents}
-  .wrow .vals .seg{grid-area:seg;justify-self:end}
-  .wrow .vals select{grid-area:lbl;width:116px;min-width:0}
-  .wrow .geenmsg{grid-area:seg;align-self:center;justify-self:end;text-align:right;max-width:175px;font-size:.82rem}
+  /* regel 1: adres (mag doorlopen), label, knoppen; regel 2: WOZ en eigenaar */
+  .wrow .r1{grid-template-columns:minmax(0,1fr) 76px auto;grid-template-areas:"head lbl meer" "r2 r2 r2";row-gap:6px}
+  .wrow .r2{grid-area:r2;display:flex;gap:8px;align-items:center;min-width:0}
+  .wrow .r2 .wozf{flex:1 1 104px;min-width:96px}
+  .won.geen .r2 .wozf{flex:0 0 120px}
+  .wrow select.lbl{padding-left:8px;padding-right:2px}
+  .wrow .meer .ib{width:26px}
+  .wrow .geenmsg{flex:1 1 0;min-width:0;text-align:right;font-size:.82rem}
   .wrow .meer{justify-content:flex-end}.wrow .addr{grid-template-columns:1fr 1fr}}
+@media (max-width:360px){
+  .wrow .r1{grid-template-columns:minmax(0,1fr) 70px auto}
+  .wrow .head b{font-size:.95rem}
+  .wrow .wozf input{padding-left:20px;padding-right:6px;font-size:.88rem}
+  .wrow .wozf::before{left:7px}
+  .wrow .seg label{padding:6px 7px;font-size:.82rem}
+  .wrow .meer .ib{width:24px}}
 @media (max-width:520px){.setall{grid-template-columns:1fr 1fr}.setall>span{grid-column:1/-1}}
 
 /* maatregelen */
@@ -748,19 +760,20 @@ function wCard(w){
   const [stK,stI,stT]=wStatus(w);
   const toonAdres=w._edit||!w.straat||!w.nr||!w.plaats;
   const meta=[w.opp?`${w.opp} m²`:'', w.ligging===3?'bovenste verdieping':w.ligging===1?'begane grond':w.ligging===2?'tussenverdieping':''].filter(Boolean).join(' · ');
+  const smal=matchMedia('(max-width:700px)').matches; // op mobiel korte labelnamen, zodat het adres past
   const lbs=['','D','E','F','G','Onbekend',...('ABC'.includes(w.label)&&w.label?[w.label]:[])];
   return `<div class="wrow won ${inAanvraag(w)?'':'geen'}" data-w="${w.id}">
     <div class="r1">
       <div class="head"><b title="${esc(adres(w))}"><span class="st ${stK}" aria-label="${stT}">${stI}</span> ${esc(adres(w))}</b>${meta?`<span class="meta">${meta}</span>`:''}</div>
+      <div class="r2">
       ${wozVeld(w,t)}
-      <div class="vals">
         <div class="seg eig ${e('eig')}" role="radiogroup" aria-label="Eigenaar ${esc(adres(w))}">
           <label><input type="radio" name="eig-${w.id}" value="eigenaar-bewoner" data-wf="eig" ${w.eig==='eigenaar-bewoner'?'checked':''}>Bewoner</label>
           <label><input type="radio" name="eig-${w.id}" value="eigenaar-verhuurder" data-wf="eig" ${w.eig==='eigenaar-verhuurder'?'checked':''}>Verhuurder</label>
         </div>
-        <select data-wf="label" class="lbl ${lbKlasse(w.label)} ${e('label')}" aria-label="Energielabel ${esc(adres(w))}">${lbs.map(v=>`<option value="${v}" ${v===w.label?'selected':''}>${!v?'Label…':v==='Onbekend'?'Geen label':'Label '+v}</option>`).join('')}</select>
+        <div class="geenmsg">Geen subsidie: WOZ ${eur.format(WOZ_GRENS).replace(',00','')} of hoger</div>
       </div>
-      <div class="geenmsg">Geen subsidie: WOZ ${eur.format(WOZ_GRENS).replace(',00','')} of hoger</div>
+        <select data-wf="label" class="lbl ${lbKlasse(w.label)} ${e('label')}" aria-label="Energielabel ${esc(adres(w))}">${lbs.map(v=>`<option value="${v}" ${v===w.label?'selected':''}>${!v?(smal?'Label':'Label…'):v==='Onbekend'?(smal?'Geen':'Geen label'):(smal?v:'Label '+v)}</option>`).join('')}</select>
       <div class="meer"><button class="ib" data-act="editw" title="${w._edit?'Klaar met aanpassen':'Adres aanpassen'}" aria-label="${w._edit?'Klaar met aanpassen':'Adres aanpassen'} ${esc(adres(w))}">${w._edit?'✓':'✎'}</button><button class="ib del" data-act="del" title="Verwijderen" aria-label="Verwijder ${esc(adres(w))}">✕</button></div>
     </div>
     ${toonAdres?`<div class="addr">
@@ -1083,6 +1096,7 @@ function focusErr(){
   if(S.step===2 && !S.woningen.length) $('#bulkmsg').textContent='Voeg eerst minimaal één adres toe.';
 }
 // Bij 3 of meer woningen zit tussen "Uw VvE" en "Woningen" de pagina over de splitsingsakte.
+matchMedia('(max-width:700px)').addEventListener?.('change',()=>{ if(S.step===2 && !document.activeElement?.closest?.('#wlist')) render(); });
 $('#prev').onclick=()=>{ if(S.step===1&&S.sub) go(1); else if(S.step===2&&splitsActief()) go(1,1); else go(S.step-1); };
 $('#next').onclick=()=>{
   if(S.step===1&&!S.sub&&splitsActief()){ S._try1=true; if(!(A()>0&&S.vve.trim()&&S.vveAdres.trim())){ render(); focusErr(); return; } go(1,1); return; }
