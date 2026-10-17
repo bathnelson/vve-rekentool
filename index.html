@@ -79,7 +79,8 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--focus);b
 input.err,select.err{border-color:var(--danger)}
 .num{text-align:right;font-variant-numeric:tabular-nums}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
-@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+.grid2.g21{grid-template-columns:2fr 1fr}
+@media (max-width:560px){.grid2,.grid2.g21{grid-template-columns:1fr}}
 
 .btn{font:inherit;font-weight:600;border-radius:10px;padding:11px 18px;min-height:46px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
 .btn:hover{background:var(--surface-2)}
@@ -119,20 +120,43 @@ input.err,select.err{border-color:var(--danger)}
 .chips{display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0}
 .chips label{display:flex;align-items:center;gap:6px;font-size:.95rem;cursor:pointer}
 .chips input{width:18px;height:18px;accent-color:var(--accent)}
-.setall{display:grid;grid-template-columns:auto 1fr 1fr 1fr;gap:8px;align-items:center;margin:0 0 14px;padding:10px 12px;background:var(--surface-2);border-radius:10px}
+.setall{display:grid;grid-template-columns:auto 1fr 1fr;gap:8px;align-items:center;margin:0 0 14px;padding:8px 12px;background:var(--surface-2);border-radius:10px}
+.setall select{min-height:36px;padding:5px 8px;font-size:.92rem}
 .setall>span{font-size:.85rem;color:var(--muted);font-weight:600}
 .filter{display:flex;gap:6px;margin:0 0 10px}
 .filter button{all:unset;cursor:pointer;font-size:.88rem;padding:5px 12px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
 .filter button[aria-pressed=true]{background:var(--text);color:var(--surface);border-color:var(--text)}
 .filter button:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 .wlist{border-top:1px solid var(--border)}
-.wrow{border-bottom:1px solid var(--border);padding:10px 0}
-.wrow .r1{display:grid;grid-template-columns:minmax(170px,1.6fr) repeat(3,minmax(110px,1fr)) auto;gap:8px;align-items:center}
-.wrow .head{display:flex;flex-direction:column;min-width:0}
+.wrow{border-bottom:1px solid var(--border);padding:8px 0}
+.wrow .r1{display:grid;grid-template-columns:minmax(150px,1.4fr) 128px minmax(0,2fr) auto;grid-template-areas:"head woz vals meer";gap:8px;align-items:center}
+.wrow .head{grid-area:head;display:flex;flex-direction:column;min-width:0}
+.wrow .wozf{grid-area:woz;position:relative}
+.wrow .wozf::before{content:"€";position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:.9rem;pointer-events:none}
+.wrow .wozf input{min-height:38px;padding:6px 8px 6px 22px;font-size:.92rem;text-align:right;font-variant-numeric:tabular-nums}
+input.woz-ja{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:650}
+input.woz-nee{background:var(--danger-soft);border-color:var(--danger);color:var(--danger);font-weight:650}
+.wrow .vals{grid-area:vals;display:flex;gap:8px;align-items:center;flex-wrap:wrap;min-width:0}
+.wrow .vals select{flex:1 1 92px;width:auto;min-width:92px}
+.wrow .geenmsg{grid-area:vals;display:none;color:var(--danger);font-size:.88rem;font-weight:600}
+.won.geen .vals,.won.geen .bd{display:none}
+.won.geen .geenmsg{display:block}
+.won.geen .head b{color:var(--muted);font-weight:500}
+.wrow .meer{grid-area:meer}
+.wrow .seg{margin:0;flex:none}
+.wrow .seg label{padding:6px 10px;font-size:.88rem}
+.seg.leeg{background:var(--todo);border-color:var(--todo-border)}
+.seg.err{border-color:var(--danger)}
+/* energielabels in de officiële kleuren */
+.lb-A{--lb:#00a651;--lbi:#fff}.lb-B{--lb:#50b848;--lbi:#fff}.lb-C{--lb:#bed630;--lbi:#1d2420}.lb-D{--lb:#fff200;--lbi:#1d2420}
+.lb-E{--lb:#fdb913;--lbi:#1d2420}.lb-F{--lb:#f37021;--lbi:#fff}.lb-G{--lb:#ed1c24;--lbi:#fff}.lb-X{--lb:#8a948e;--lbi:#fff}
+select.lbl[class*="lb-"]{background-color:var(--lb);color:var(--lbi);border-color:var(--lb);font-weight:700}
+select.lbl option{background:var(--surface);color:var(--text);font-weight:400}
+.eb{display:inline-grid;place-items:center;min-width:1.5em;height:1.5em;padding:0 3px;border-radius:4px;background:var(--lb);color:var(--lbi);font-weight:800;font-size:.78rem;line-height:1;vertical-align:1px;margin-right:6px}
 .wrow .head b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wrow .head .meta{font-size:.78rem;color:var(--muted)}
 .wrow .st{width:22px;text-align:center;font-weight:700}
-.wrow .st.ok{color:var(--ok)} .wrow .st.todo{color:var(--todo-border)}
+.wrow .st.ok{color:var(--ok)} .wrow .st.todo{color:var(--todo-border)} .wrow .st.uit{color:var(--danger)}
 .wrow select{min-height:38px;padding:6px 8px;font-size:.92rem}
 .wrow .meer{display:flex;gap:2px}
 .ib{all:unset;cursor:pointer;width:30px;height:30px;display:grid;place-items:center;border-radius:6px;color:var(--muted);font-size:1rem}
@@ -140,28 +164,38 @@ input.err,select.err{border-color:var(--danger)}
 .ib:focus-visible{outline:2px solid var(--focus)}
 .ib.del:hover{color:var(--danger)}
 .wrow .addr{display:grid;grid-template-columns:2fr .8fr .8fr 1.3fr;gap:8px;margin-top:8px}
-.wrow .bd{margin-top:6px;padding:6px 10px;border-radius:8px;background:var(--surface-2);display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;font-size:.9rem}
-.wrow .bd .lbl{font-weight:600;font-size:.85rem}
-.wrow .bd label{display:flex;align-items:center;gap:5px;cursor:pointer}
-.wrow .bd input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent)}
+.wrow .bd{margin-top:6px;padding:5px 8px;border-radius:8px;background:var(--surface-2);display:flex;flex-wrap:wrap;gap:4px 6px;align-items:center;font-size:.85rem}
+.wrow .bd .lbl{font-weight:600;font-size:.82rem;margin-right:4px}
+/* bouwdelen als aan/uit-knopjes */
+.wrow .bd label{display:inline-flex;align-items:center;cursor:pointer;padding:3px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface);user-select:none}
+.wrow .bd label:has(input:checked){background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.wrow .bd label:has(input:disabled){opacity:.45;cursor:default}
+.wrow .bd label:has(input:focus-visible){outline:2px solid var(--focus);outline-offset:1px}
+.wrow .bd input[type=checkbox]{position:absolute;opacity:0;pointer-events:none}
 .wrow .bd input[type=text]{flex:1 1 180px;min-height:32px;padding:4px 8px;font-size:.9rem}
 .wrow .bd .fielderr{flex-basis:100%;margin:0}
-@media (max-width:700px){.wrow .r1{grid-template-columns:1fr 1fr}.wrow .head{grid-column:1/-1}.wrow .meer{justify-content:flex-end}.wrow .addr{grid-template-columns:1fr 1fr}.setall{grid-template-columns:1fr}}
-@media (max-width:640px){.setall{grid-template-columns:1fr}}
+@media (max-width:700px){
+  .wrow .r1{grid-template-columns:1fr auto auto;grid-template-areas:"head lbl meer" "woz seg seg"}
+  .wrow .vals{display:contents}
+  .wrow .vals .seg{grid-area:seg;justify-self:end}
+  .wrow .vals select{grid-area:lbl;width:116px;min-width:0}
+  .wrow .geenmsg{grid-area:seg;align-self:center;justify-self:end;text-align:right;max-width:175px;font-size:.82rem}
+  .wrow .meer{justify-content:flex-end}.wrow .addr{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.setall{grid-template-columns:1fr 1fr}.setall>span{grid-column:1/-1}}
 
 /* maatregelen */
-.grp{margin-bottom:20px}
-.grp>h3{margin-bottom:4px}
-.grp>p{color:var(--muted);font-size:.88rem;margin-bottom:8px}
-.mt{border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--surface)}
+.grp{margin-bottom:16px}
+.grp>h3{margin:0 0 6px;font-size:.98rem}
+.grp>h3 .gt{font-weight:400;color:var(--muted);font-size:.85rem;margin-left:6px}
+.mt{border:1.5px solid var(--border);border-radius:10px;margin-bottom:6px;background:var(--surface)}
 .mt.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent-soft) 45%,var(--surface))}
-.mt .tog{display:flex;gap:12px;align-items:flex-start;padding:11px 14px;cursor:pointer}
+.mt .tog{display:flex;gap:10px;align-items:flex-start;padding:8px 12px;cursor:pointer}
 .mt:not(.on) .eis{display:none}
-.mt .tog input{width:22px;height:22px;margin-top:2px;accent-color:var(--accent);flex:none}
-.mt .tog .nm{font-weight:650}
-.mt .tog .rt{margin-left:auto;white-space:nowrap;font-size:.9rem;color:var(--muted);text-align:right}
+.mt .tog input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent);flex:none}
+.mt .tog .nm{font-weight:600}
+.mt .tog .rt{margin-left:auto;white-space:nowrap;font-size:.85rem;color:var(--muted);text-align:right;padding-top:2px}
 .mt .eis{display:block;font-size:.85rem;color:var(--muted)}
-.mt .body{padding:0 14px 14px 48px}
+.mt .body{padding:0 12px 12px 42px}
 @media (max-width:560px){.mt .body{padding-left:14px}}
 .mt .calc{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:end}
 @media (max-width:560px){.mt .calc{grid-template-columns:1fr}}
@@ -328,7 +362,7 @@ function fromPre(d,s){
   s.woningen=mee.slice(0,MAX_ROWS*2).map(w=>{ const lb=label(w.energielabel);
     return newW({straat:w.straat||'',nr:String(w.huisnummer??w.nr??''),toev:String(w.toevoeging??w.toev??''),plaats:w.woonplaats||w.plaats||'Haarlem',
       woz:woz(w),eig:eig(w.eigenaar),label:lb,bd:(w.slechteBouwdelen||[]).filter(b=>BOUWDELEN.includes(b)),
-      bdAnders:(w.slechteBouwdelen||[]).filter(b=>!BOUWDELEN.includes(b)).join(', '),wozWaarde:num(w.wozWaarde)||null,nummeraanduiding:/^\d{16}$/.test(w.nummeraanduiding||'')?w.nummeraanduiding:''}); });
+      bdAnders:(w.slechteBouwdelen||[]).filter(b=>!BOUWDELEN.includes(b)).join(', '),wozWaarde:num(w.wozWaarde)||null,...(num(w.wozWaarde)?{auto:{woz:woz(w),wozWaarde:num(w.wozWaarde)}}:{}),nummeraanduiding:/^\d{16}$/.test(w.nummeraanduiding||'')?w.nummeraanduiding:''}); });
   const alias={spouwmuur:'G',gevelbinnen:'H',gevelbuiten:'I',dak:'J',zoldervloer:'K',vloer:'L',bodem:'M',hrglas:'N',hrpanelen:'O',deuren:'P',tripleglas:'Q',triplepanelen:'R',tripledeuren:'S',ventilatie:'T'};
   Object.entries(d.maatregelen||{}).forEach(([k,v])=>{ const code=MK[k]?k:alias[low(k).replace(/[^a-z]/g,'')]; if(!code||!v) return;
     s.mt[code]={on:true,offerte:MK[code].perWoning?'':String(v).replace('.',',')}; });
@@ -346,6 +380,7 @@ function save(){ clearTimeout(saveT); saveT=setTimeout(()=>{ try{localStorage.se
 /* ======= Hulpfuncties ======= */
 const eur = new Intl.NumberFormat('nl-NL',{style:'currency',currency:'EUR'});
 const nf = new Intl.NumberFormat('nl-NL',{maximumFractionDigits:2});
+const nf0 = new Intl.NumberFormat('nl-NL',{maximumFractionDigits:0});
 const $ = s=>document.querySelector(s);
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function num(v){
@@ -359,7 +394,14 @@ function num(v){
 function r2(n){return Math.round(n*100)/100;}
 function fmtIn(n){return n?String(r2(n)).replace('.',','):'';}
 function A(){return Math.round(num(S.A));}
-function B(){return S.woningen.length;}
+// Alleen woningen met een WOZ-waarde onder de grens krijgen subsidie; de rest telt verder nergens mee.
+function inAanvraag(w){ return w.woz!=='Boven'; }
+function wozBekend(w){ return w.woz==='Boven'||w.woz==='Onder'; }
+function wozUit(v){ return v?(v<WOZ_GRENS?'Onder':'Boven'):''; }
+function WS(){ return S.woningen.filter(inAanvraag); }
+function B(){return WS().length;}
+function lbKlasse(l){ return l==='Onbekend'?'lb-X':l?'lb-'+l:''; }
+function eb(l){ return l?`<span class="eb ${lbKlasse(l)}" title="${l==='Onbekend'?'Geen energielabel':'Energielabel '+l}">${l==='Onbekend'?'?':l}</span>`:''; }
 function actief(){return M.filter(m=>S.mt[m.k]?.on);}
 function adres(w){return [w.straat,w.nr,w.toev].filter(Boolean).join(' ').trim()||'(adres nog leeg)';}
 
@@ -382,7 +424,7 @@ function vdSet(w,k,v){ (S.verdeling[w.id] ||= {})[k]=v; }
 // Verdeelsleutel per maatregel. 'slim': dak/zoldervloer naar de bovenste laag, vloer/bodem naar de begane
 // grond (ligging uit EP-Online), overige m²-maatregelen naar woonoppervlakte (BAG). Zonder gegevens: gelijk.
 function sleutel(k){
-  const ws=S.woningen;
+  const ws=WS();
   if(S.verdeelMethode==='gelijk') return {soort:'gelijk'};
   // Verdieping alleen gebruiken als die van álle woningen bekend is (EP-Online geeft hem alleen bij een label).
   const ligAlles=ws.length&&ws.every(w=>w.ligging>0);
@@ -398,14 +440,14 @@ function sleutelTekst(k){ const sl=sleutel(k);
     : sl.soort==='beneden'?`alleen de ${sl.n} woning${sl.n===1?'':'en'} op de begane grond`
     : sl.soort==='opp'?(sl.ligOnbekend?'naar woonoppervlakte (verdieping niet van alle woningen bekend)':'naar woonoppervlakte') : 'gelijk over alle woningen'; }
 function sleutelKort(k){ const sl=sleutel(k); return sl.soort==='boven'?'bovenste verdieping':sl.soort==='beneden'?'begane grond':sl.soort==='opp'?'naar woonoppervlakte':'gelijk'; }
-function heeftSlimmeData(){ return S.woningen.some(w=>w.ligging) || (S.woningen.length && S.woningen.every(w=>w.opp>0)); }
-function vastIds(k){ const ids=new Set(S.woningen.map(w=>w.id)); return (S.vast?.[k]||[]).filter(id=>ids.has(id)); }
+function heeftSlimmeData(){ const ws=WS(); return ws.some(w=>w.ligging) || (ws.length && ws.every(w=>w.opp>0)); }
+function vastIds(k){ const ids=new Set(WS().map(w=>w.id)); return (S.vast?.[k]||[]).filter(id=>ids.has(id)); }
 function herverdeel(k){
   const m=MK[k];
-  if(m.perWoning){ S.woningen.forEach(w=>vdSet(w,k,S.mt[k]?.on?1:0)); return; }
+  if(m.perWoning){ WS().forEach(w=>vdSet(w,k,S.mt[k]?.on?1:0)); return; }
   const vast=new Set(vastIds(k));
-  const vrij=S.woningen.filter(w=>!vast.has(w.id)); if(!vrij.length) return;
-  const rest=Math.max(0, deelM2(m)-S.woningen.filter(w=>vast.has(w.id)).reduce((s,w)=>s+num(vdGet(w,k)),0));
+  const vrij=WS().filter(w=>!vast.has(w.id)); if(!vrij.length) return;
+  const rest=Math.max(0, deelM2(m)-WS().filter(w=>vast.has(w.id)).reduce((s,w)=>s+num(vdGet(w,k)),0));
   const gw=gewicht(k); let g=vrij.map(w=>gw(w)); if(!g.some(x=>x>0)) g=vrij.map(()=>1);
   const som=g.reduce((a,b)=>a+b,0), laatste=g.map((x,i)=>x>0?i:-1).filter(i=>i>=0).pop();
   let verdeeld=0;
@@ -413,14 +455,15 @@ function herverdeel(k){
   vdSet(vrij[laatste],k,Math.max(0,r2(rest-verdeeld)));
 }
 function syncVerdeling(){
+  S.woningen.filter(w=>!inAanvraag(w)).forEach(w=>M.forEach(m=>vdSet(w,m.k,0)));
   M.forEach(m=>{
     if(!S.mt[m.k]?.on){ S.woningen.forEach(w=>vdSet(w,m.k,0)); return; }
-    if(m.perWoning && S.mode[m.k]==='hand') S.woningen.forEach(w=>{ if(S.verdeling[w.id]?.[m.k]===undefined) vdSet(w,m.k,1); });
+    if(m.perWoning && S.mode[m.k]==='hand') WS().forEach(w=>{ if(S.verdeling[w.id]?.[m.k]===undefined) vdSet(w,m.k,1); });
     else herverdeel(m.k);
   });
 }
 function bedragWoning(w){ return actief().reduce((s,m)=>s+num(vdGet(w,m.k))*m.tarief,0); }
-function m2Totaal(m){ return S.woningen.reduce((s,w)=>s+num(vdGet(w,m.k)),0); }
+function m2Totaal(m){ return WS().reduce((s,w)=>s+num(vdGet(w,m.k)),0); }
 function totaal(){ return actief().reduce((s,m)=>s+m2Totaal(m)*m.tarief,0); }
 
 /* ======= Controles ======= */
@@ -429,15 +472,19 @@ function checks(){
   if(!S.vve.trim()) err.push({s:1,t:'Vul de naam van de VvE in.'});
   if(!S.vveAdres.trim()) err.push({s:1,t:'Vul het adres van de VvE in.'});
   if(!(a>0)) err.push({s:1,t:'Vul het aantal woningen in het gebouw in.'});
-  if(b===0) err.push({s:2,t:'Voeg de adressen toe van de woningen waarvoor u subsidie aanvraagt.'});
-  if(a>0 && b>a) err.push({s:2,t:`U heeft ${b} woningen toegevoegd, maar het gebouw heeft er ${a}. Dat kan niet kloppen.`});
+  const nAlle=S.woningen.length, nGeen=nAlle-b;
+  if(nAlle===0) err.push({s:2,t:'Voeg de adressen toe van de woningen waarvoor u subsidie aanvraagt.'});
+  else if(b===0 && S.woningen.every(wozBekend)) err.push({s:2,t:`Geen van de woningen heeft een WOZ-waarde onder ${eur.format(WOZ_GRENS).replace(',00','')}. Er kan dan geen subsidie worden aangevraagd.`});
+  if(a>0 && nAlle>a) err.push({s:2,t:`U heeft ${nAlle} woningen toegevoegd, maar het gebouw heeft er ${a}. Dat kan niet kloppen.`});
   if(b>MAX_ROWS) err.push({s:2,t:`De rekentool heeft plaats voor maximaal ${MAX_ROWS} adressen. U heeft er ${b}.`});
   let onvolledig=0, bd=0;
   S.woningen.forEach(w=>{
-    if(!w.straat||!w.nr||!w.plaats||!w.woz||!w.eig||!w.label) onvolledig++;
+    if(!w.straat||!w.nr||!w.plaats||!wozBekend(w)) onvolledig++;
+    else if(!inAanvraag(w)) return;
+    else if(!w.eig||!w.label) onvolledig++;
     else if(w.label==='Onbekend' && !w.bdGeen && bouwdelen(w).length<2) bd++;
   });
-  if(onvolledig) err.push({s:2,t:`${onvolledig} woning(en) zijn nog niet volledig ingevuld (adres, WOZ, eigenaar of energielabel).`});
+  if(onvolledig) err.push({s:2,t:`${onvolledig} woning(en) zijn nog niet volledig ingevuld (adres, WOZ-waarde, eigenaar of energielabel).`});
   if(bd) err.push({s:2,t:`${bd} woning(en) met onbekend energielabel hebben nog geen 2 slechte bouwdelen.`});
   const act=actief();
   if(!act.length) err.push({s:3,t:'Kies minimaal één maatregel.'});
@@ -448,7 +495,7 @@ function checks(){
     else if(m.min==='70' && !t.ok70) err.push({s:3,t:`${m.naam}: bevestig dat het om ${m.minTekst} gaat.`});
     if(!t.eisOk) err.push({s:3,t:`${m.naam}: bevestig dat de offerte voldoet aan de eis (${m.eis}).`});
   });
-  S.woningen.forEach(w=>{
+  WS().forEach(w=>{
     const e=bedragWoning(w);
     if(e>MAX_PER_WONING) err.push({s:4,t:`${adres(w)}: ${eur.format(e)} is meer dan het maximum van ${eur.format(MAX_PER_WONING)} per woning.`});
     act.filter(m=>m.min==='m2').forEach(m=>{ const v=num(vdGet(w,m.k)); if(v>0 && v<m.minWaarde) err.push({s:4,t:`${adres(w)}: ${m.naam} is ${nf.format(v)} m², minimaal ${m.minWaarde} m² per woning.`}); });
@@ -458,9 +505,10 @@ function checks(){
   });
   if(S.bouwjaar>=BOUWJAAR_VOOR) warn.push({s:1,t:`Het gebouw is volgens de BAG in ${S.bouwjaar} gebouwd. De regeling geldt voor gebouwen die vóór ${BOUWJAAR_VOOR} zijn opgeleverd.`});
   Object.keys(MAX3D).forEach(k=>{ const t=S.mt[k], max=S.opp3d?.[k]; if(t?.on&&max&&num(t.offerte)>max) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan alle buitenmuren samen volgens 3D BAG (${nf.format(max)} m²). Controleer de offerte.`}); });
-  const geenSlecht=S.woningen.filter(w=>w.label==='Onbekend'&&w.bdGeen).length;
+  if(nGeen) warn.push({s:2,t:`${nGeen} woning${nGeen===1?' heeft':'en hebben'} een WOZ-waarde van ${eur.format(WOZ_GRENS).replace(',00','')} of hoger en ${nGeen===1?'telt':'tellen'} niet mee in de aanvraag.`});
+  const geenSlecht=WS().filter(w=>w.label==='Onbekend'&&w.bdGeen).length;
   if(geenSlecht) warn.push({s:2,t:`${geenSlecht} woning(en) zonder energielabel zijn opgegeven als goed geïsoleerd. Op de rekentool wordt bij een onbekend label een opsomming van minimaal 2 slechte bouwdelen gevraagd. Controleer of deze woningen mee kunnen doen.`});
-  const goed=S.woningen.filter(w=>['A','B','C'].includes(w.label));
+  const goed=WS().filter(w=>['A','B','C'].includes(w.label));
   if(goed.length) warn.push({s:2,t:`${goed.length} woning(en) hebben energielabel A, B of C. Op de rekentool staat "evt. aanwezig (slecht) energielabel (D t/m G)". Controleer of deze woningen mee kunnen doen.`});
   act.filter(m=>!m.perWoning).forEach(m=>{
     const verw=deelM2(m), echt=m2Totaal(m);
@@ -480,15 +528,18 @@ function canJump(i){ return i<=S.maxStep; }
 const VERPLICHT='[data-f=vve],[data-f=vveAdres],[data-f=A],[data-wf=straat],[data-wf=nr],[data-wf=plaats],[data-wf=woz],[data-wf=eig],[data-wf=label],[data-mf=offerte],[data-mf=eisOk],[data-mf=ok70],[data-c=naam],[data-c=email],[data-c=akkoord]';
 function markeerLeeg(){
   document.querySelectorAll(VERPLICHT).forEach(el=>{
+    if(el.type==='radio') return;
     let leeg = el.type==='checkbox' ? !el.checked : !String(el.value).trim();
     if(el.dataset.f==='A') leeg=!(num(el.value)>0);
+    if(el.dataset.wf==='woz'){ const w=S.woningen.find(x=>x.id==el.closest('[data-w]')?.dataset.w); leeg=!(w&&wozBekend(w)); }
     if(el.dataset.mf==='offerte') leeg=!(num(el.value)>0);
     if(el.dataset.c==='email') leeg=!MAIL_RE.test(el.value);
     (el.type==='checkbox'?el.closest('.confirm'):el)?.classList.toggle('leeg',leeg);
   });
   document.querySelectorAll('.won[data-w]').forEach(c=>{ const w=S.woningen.find(x=>x.id==c.dataset.w), bd=c.querySelector('.bd');
     if(w&&bd) bd.classList.toggle('leeg', !w.bdGeen && bouwdelen(w).length<2); });
-  const lg=document.getElementById('legend'); if(lg) lg.hidden=!document.querySelector('#view .leeg');
+  document.querySelectorAll('.seg.eig').forEach(g=>g.classList.toggle('leeg',!g.querySelector('input:checked')));
+  const lg=document.getElementById('legend'); if(lg) lg.hidden=![...document.querySelectorAll('#view .leeg')].some(el=>el.offsetParent!==null);
 }
 document.addEventListener('input',()=>markeerLeeg());
 function render(){
@@ -526,7 +577,7 @@ function vStart(){
     <ul class="check">
       <li>De <b>offerte van de aannemer</b>, met het aantal m² per maatregel</li>
       <li>De <b>adressen</b> van de woningen waarvoor u subsidie aanvraagt</li>
-      <li>Per woning: <b>eigenaar-bewoner of verhuurder</b>, het <b>energielabel</b> en of de <b>WOZ-waarde</b> boven of onder het Haarlemse gemiddelde ligt</li>
+      <li>Per woning: de <b>WOZ-waarde</b> (peildatum 1-1-2023), <b>eigenaar-bewoner of verhuurder</b> en het <b>energielabel</b>. Opgehaalde gegevens zijn al ingevuld.</li>
     </ul>
     <h3>Wat krijgt u aan het eind?</h3>
     <ul class="check">
@@ -550,52 +601,61 @@ function vVvE(){
   return `<div class="card">
     <h2>Uw VvE</h2>
     <p class="intro">Kies één adres van het gebouw. We zoeken dan alle woningen van de VvE voor u op.</p>
-    <label class="fld"><span class="l">Naam van de VvE</span>
-      <input type="text" data-f="vve" value="${esc(S.vve)}" autocomplete="organization" placeholder="Bijv. VvE De Linde" class="${S._try1&&!S.vve.trim()?'err':''}">
-      <span class="hint">Zoals de VvE heet, bijvoorbeeld in de statuten of bij de Kamer van Koophandel.</span>
-      ${S._try1&&!S.vve.trim()?'<span class="fielderr">Vul de naam van de VvE in.</span>':''}</label>
     <label class="fld"><span class="l">Adres van de VvE</span>
       <div class="ac"><input type="text" data-f="vveAdres" value="${esc(S.vveAdres)}" autocomplete="off" placeholder="Begin met typen, bijv. Kleverparkweg 12" class="${S._try1&&!S.vveAdres.trim()?'err':''}"
         role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="ac-list">
         <ul class="ac-list" id="ac-list" role="listbox" hidden></ul></div>
-            <div id="vvestatus" class="vvestatus" aria-live="polite">${vveStatusHtml()}</div>
+      <div id="vvestatus" class="vvestatus" aria-live="polite">${vveStatusHtml()}</div>
       ${S._try1&&!S.vveAdres.trim()?'<span class="fielderr">Vul het adres van de VvE in.</span>':''}</label>
-    <label class="fld"><span class="l">Hoeveel woningen zijn er in het hele gebouw?</span>
-      <input type="text" inputmode="numeric" data-f="A" value="${esc(S.A)}" style="max-width:160px" class="num ${S._try1&&!(a>0)?'err':''}">
-      <span class="hint">Alle woningen in het gebouw, ook die niet meedoen. Hoeveel er meedoen, tellen we straks uit de adressenlijst.</span>
+    <div class="grid2 g21">
+    <label class="fld"><span class="l">Naam van de VvE</span>
+      <input type="text" data-f="vve" value="${esc(S.vve)}" autocomplete="organization" placeholder="Bijv. VvE De Linde" class="${S._try1&&!S.vve.trim()?'err':''}">
+      <span class="hint">Zoals in de statuten of bij de KvK.</span>
+      ${S._try1&&!S.vve.trim()?'<span class="fielderr">Vul de naam van de VvE in.</span>':''}</label>
+    <label class="fld"><span class="l">Woningen in het gebouw</span>
+      <input type="text" inputmode="numeric" data-f="A" value="${esc(S.A)}" class="num ${S._try1&&!(a>0)?'err':''}">
+      <span class="hint">Alle woningen, ook die niet meedoen.</span>
       ${S._try1&&!(a>0)?'<span class="fielderr">Vul een aantal in.</span>':''}</label>
+    </div>
     ${PRE?'<p class="tip">Ingevuld vanuit de adresverkenner. Klopt iets niet? U kunt het hier aanpassen.</p>':''}
   </div>`;
 }
 
 let wFilter='alle';
-function woningKlaar(w){ return !!(w.straat&&w.nr&&w.plaats&&w.woz&&w.eig&&w.label) && (w.label!=='Onbekend'||w.bdGeen||bouwdelen(w).length>=2); }
-function vWoningen(){
-  const b=B(), a=A();
-  // Gevonden via de VvE-clusterindex: dan is handmatig adressen toevoegen niet nodig.
-  const auto=S.clusterOk&&S.bron==='pdok'&&b>0;
-  const cnt=k=>S.woningen.filter(w=>w.eig===k).length;
+function woningKlaar(w){ return !!(w.straat&&w.nr&&w.plaats&&wozBekend(w)) && (!inAanvraag(w) || (!!(w.eig&&w.label) && (w.label!=='Onbekend'||w.bdGeen||bouwdelen(w).length>=2))); }
+function wKop(){
+  const n=S.woningen.length, b=B(), a=A(), geen=n-b;
+  const auto=S.clusterOk&&S.bron==='pdok'&&n>0;
+  const cnt=k=>WS().filter(w=>w.eig===k).length;
   const open=S.woningen.filter(w=>!woningKlaar(w)).length;
   if(!open) wFilter='alle';
+  return n?`<p class="intro">${auto?`Opgehaald bij ${esc(S.vveAdres)}. `:''}${n} woning${n===1?'':'en'}${a?` van de ${a} in het gebouw`:''}: <b style="color:var(--ok)">${b} met subsidie</b>${geen?` · <b style="color:var(--danger)">${geen} geen subsidie</b> (WOZ)`:''} · ${cnt('eigenaar-bewoner')} bewoner · ${cnt('eigenaar-verhuurder')} verhuurder${open?` · <b>${open} nog aanvullen</b>`:' · alles ingevuld'}</p>
+    ${a&&n>a?'<div class="note err small">Er staan meer woningen in de lijst dan er in het gebouw zijn. Controleer het aantal bij stap 2.</div>':''}
+    ${open&&open<n?`<div class="filter" role="group" aria-label="Filter"><button data-act="filter" data-v="alle" aria-pressed="${wFilter==='alle'}">Alle (${n})</button><button data-act="filter" data-v="todo" aria-pressed="${wFilter==='todo'}">Nog aanvullen (${open})</button></div>`:''}`
+    :'<p class="intro">Voeg de adressen toe van de woningen waarvoor u subsidie aanvraagt.</p>';
+}
+function vWoningen(){
+  const n=S.woningen.length;
+  // Gevonden via de VvE-clusterindex: dan is handmatig adressen toevoegen niet nodig.
+  const auto=S.clusterOk&&S.bron==='pdok'&&n>0;
+  const kop=wKop();
   const lijst=wFilter==='todo'?S.woningen.filter(w=>!woningKlaar(w)):S.woningen;
+  const grens=eur.format(WOZ_GRENS).replace(',00','');
   return `<div class="card">
     <h2>Woningen</h2>
-    ${b?`<p class="intro">${auto?`Opgehaald bij ${esc(S.vveAdres)}. `:''}${b} woning${b===1?'':'en'}${a?` van de ${a} in het gebouw`:''} · ${cnt('eigenaar-bewoner')} eigenaar-bewoner · ${cnt('eigenaar-verhuurder')} verhuurder${open?` · <b>${open} nog aanvullen</b>`:' · alles ingevuld'}</p>`
-      :'<p class="intro">Voeg de adressen toe van de woningen waarvoor u subsidie aanvraagt.</p>'}
-    ${a&&b>a?'<div class="note err small">Er staan meer woningen in de lijst dan er in het gebouw zijn. Controleer het aantal bij stap 2.</div>':''}
-    ${auto?'':vBulk(b>0)}
-    ${b?`
+    <div id="wkop">${kop}</div>
+    ${auto?'':vBulk(n>0)}
+    ${n?`
+    <p class="tip"><b style="color:var(--ok)">Groen</b> = WOZ-waarde onder ${grens}: subsidie mogelijk. <b style="color:var(--danger)">Rood</b> = ${grens} of hoger: geen subsidie, de woning telt verder niet mee.</p>
     <div class="setall"><span>Alles tegelijk</span>
-      ${sel('all-woz','',['','Boven','Onder','Onbekend'],['WOZ-waarde…','Boven gemiddelde','Onder gemiddelde','Weet ik niet'],'aria-label="WOZ-waarde voor alle woningen"')}
       ${sel('all-eig','',['','eigenaar-bewoner','eigenaar-verhuurder'],['Eigenaar…','Eigenaar-bewoner','Eigenaar-verhuurder'],'aria-label="Eigenaar voor alle woningen"')}
       ${sel('all-label','',['','D','E','F','G','Onbekend'],['Energielabel…','D','E','F','G','Geen / onbekend'],'aria-label="Energielabel voor alle woningen"')}
     </div>
-    ${open&&open<b?`<div class="filter" role="group" aria-label="Filter"><button data-act="filter" data-v="alle" aria-pressed="${wFilter==='alle'}">Alle (${b})</button><button data-act="filter" data-v="todo" aria-pressed="${wFilter==='todo'}">Nog aanvullen (${open})</button></div>`:''}
-    <div class="wlist" id="wlist">${lijst.map(w=>wCard(w,S.woningen.indexOf(w))).join('')}</div>
+    <div class="wlist" id="wlist">${lijst.map(w=>wCard(w)).join('')}</div>
     <div class="row" style="margin-top:12px"><button class="btn small" data-act="addone">+ Woning toevoegen</button>
     <button class="btn small ghost" data-act="clearall">Alle woningen verwijderen</button></div>
     <details class="small"><summary>Uitleg bij deze vragen</summary>
-      <p style="margin-top:8px"><b>WOZ-waarde:</b> boven of onder de gemiddelde WOZ-waarde van koopwoningen in Haarlem: € 596.000 (WOZ 2024, peildatum 1 januari 2023). Opgehaalde waarden zijn al ingevuld.</p>
+      <p style="margin-top:8px"><b>WOZ-waarde:</b> de waarde op peildatum 1 januari 2023 (WOZ 2024). Alleen woningen onder de gemiddelde WOZ-waarde van koopwoningen in Haarlem (${grens}) komen in aanmerking. Opgehaalde waarden zijn al ingevuld; zelf opzoeken kan op <a href="https://www.wozwaardeloket.nl" target="_blank" rel="noopener">wozwaardeloket.nl</a>.</p>
       <p><b>Eigenaar-bewoner</b> woont zelf in de woning. <b>Eigenaar-verhuurder</b> verhuurt de woning.</p>
       <p><b>Energielabel:</b> D t/m G. Geen label? Kies "Geen / onbekend" en geef minimaal 2 slechte bouwdelen op, of "Geen" als de woning goed geïsoleerd is.</p>
     </details>`:''}
@@ -617,19 +677,33 @@ function vBulk(dicht){
 function sel(id,val,vals,labels,attrs=''){
   return `<select ${attrs} ${id?`id="${id}"`:''}>${vals.map((v,i)=>`<option value="${esc(v)}" ${v===val?'selected':''}>${esc(labels[i])}</option>`).join('')}</select>`;
 }
-function wCard(w,i){
+function wozTitel(w){ const g=eur.format(WOZ_GRENS).replace(',00',''); return w.woz==='Onder'?`Onder ${g}: subsidie mogelijk`:w.woz==='Boven'?`${g} of hoger: geen subsidie`:'WOZ-waarde nog invullen'; }
+function wozVeld(w,t){
+  const kl=[w.woz==='Onder'?'woz-ja':w.woz==='Boven'?'woz-nee':'', t&&!wozBekend(w)?'err':''].join(' ');
+  const ph=!w.wozWaarde&&w.woz?(w.woz==='Onder'?'onder grens':'boven grens'):'invullen';
+  return `<label class="wozf"><input type="text" inputmode="numeric" data-wf="woz" value="${w.wozWaarde?nf0.format(w.wozWaarde):''}" placeholder="${ph}" class="${kl}" title="${esc(wozTitel(w))}" aria-label="WOZ-waarde ${esc(adres(w))}, ${esc(wozTitel(w))}"></label>`;
+}
+function wStatus(w){ const k=woningKlaar(w); return !inAanvraag(w)?['uit','–','geen subsidie']:k?['ok','✓','compleet']:['todo','•','nog aanvullen']; }
+function wCard(w){
   const t=S._try2;
   const e=f=>t&&!w[f]?'err':'';
   const bdn=bouwdelen(w).length;
-  const klaar=woningKlaar(w);
+  const [stK,stI,stT]=wStatus(w);
   const toonAdres=w._edit||!w.straat||!w.nr||!w.plaats;
-  const meta=[w.wozWaarde?`WOZ ${eur.format(w.wozWaarde).replace(',00','')}`:'', w.opp?`${w.opp} m²`:'', w.ligging===3?'bovenste verdieping':w.ligging===1?'begane grond':w.ligging===2?'tussenverdieping':''].filter(Boolean).join(' · ');
-  return `<div class="wrow won" data-w="${w.id}">
+  const meta=[w.opp?`${w.opp} m²`:'', w.ligging===3?'bovenste verdieping':w.ligging===1?'begane grond':w.ligging===2?'tussenverdieping':''].filter(Boolean).join(' · ');
+  const lbs=['','D','E','F','G','Onbekend',...('ABC'.includes(w.label)&&w.label?[w.label]:[])];
+  return `<div class="wrow won ${inAanvraag(w)?'':'geen'}" data-w="${w.id}">
     <div class="r1">
-      <div class="head"><b title="${esc(adres(w))}"><span class="st ${klaar?'ok':'todo'}" aria-label="${klaar?'compleet':'nog aanvullen'}">${klaar?'✓':'•'}</span> ${esc(adres(w))}</b>${meta?`<span class="meta">${meta}</span>`:''}</div>
-      ${sel('',w.woz,['','Boven','Onder','Onbekend'],['WOZ…','WOZ boven','WOZ onder','WOZ onbekend'],`data-wf="woz" class="${e('woz')}" aria-label="WOZ-waarde ${esc(adres(w))}"`)}
-      ${sel('',w.eig,['','eigenaar-bewoner','eigenaar-verhuurder'],['Eigenaar…','Bewoner','Verhuurder'],`data-wf="eig" class="${e('eig')}" aria-label="Eigenaar ${esc(adres(w))}"`)}
-      ${sel('',w.label,['','D','E','F','G','Onbekend',...('ABC'.includes(w.label)&&w.label?[w.label]:[])],['Label…','Label D','Label E','Label F','Label G','Geen label',...('ABC'.includes(w.label)&&w.label?['Label '+w.label]:[])],`data-wf="label" class="${e('label')}" aria-label="Energielabel ${esc(adres(w))}"`)}
+      <div class="head"><b title="${esc(adres(w))}"><span class="st ${stK}" aria-label="${stT}">${stI}</span> ${esc(adres(w))}</b>${meta?`<span class="meta">${meta}</span>`:''}</div>
+      ${wozVeld(w,t)}
+      <div class="vals">
+        <div class="seg eig ${e('eig')}" role="radiogroup" aria-label="Eigenaar ${esc(adres(w))}">
+          <label><input type="radio" name="eig-${w.id}" value="eigenaar-bewoner" data-wf="eig" ${w.eig==='eigenaar-bewoner'?'checked':''}>Bewoner</label>
+          <label><input type="radio" name="eig-${w.id}" value="eigenaar-verhuurder" data-wf="eig" ${w.eig==='eigenaar-verhuurder'?'checked':''}>Verhuurder</label>
+        </div>
+        <select data-wf="label" class="lbl ${lbKlasse(w.label)} ${e('label')}" aria-label="Energielabel ${esc(adres(w))}">${lbs.map(v=>`<option value="${v}" ${v===w.label?'selected':''}>${!v?'Label…':v==='Onbekend'?'Geen label':'Label '+v}</option>`).join('')}</select>
+      </div>
+      <div class="geenmsg">Geen subsidie: WOZ ${eur.format(WOZ_GRENS).replace(',00','')} of hoger</div>
       <div class="meer"><button class="ib" data-act="editw" title="${w._edit?'Klaar met aanpassen':'Adres aanpassen'}" aria-label="${w._edit?'Klaar met aanpassen':'Adres aanpassen'} ${esc(adres(w))}">${w._edit?'✓':'✎'}</button><button class="ib del" data-act="del" title="Verwijderen" aria-label="Verwijder ${esc(adres(w))}">✕</button></div>
     </div>
     ${toonAdres?`<div class="addr">
@@ -645,6 +719,18 @@ function wCard(w,i){
       ${(w._anders||w.bdAnders)&&!w.bdGeen?`<input type="text" data-wf="bdAnders" value="${esc(w.bdAnders||'')}" placeholder="Welk bouwdeel?" aria-label="Ander bouwdeel">`:''}
       ${t&&bdn<2&&!w.bdGeen?'<span class="fielderr">Kies minimaal 2 bouwdelen, of "Geen" als de woning goed geïsoleerd is.</span>':''}</div>`:''}
   </div>`;
+}
+// Werk één woningrij bij zonder de hele lijst opnieuw te tekenen (zo blijft de focus staan).
+function wLive(w){
+  const row=document.querySelector(`.won[data-w="${w.id}"]`); if(!row) return;
+  row.classList.toggle('geen',!inAanvraag(w));
+  const [stK,stI,stT]=wStatus(w), st=row.querySelector('.st'); st.className='st '+stK; st.textContent=stI; st.setAttribute('aria-label',stT);
+  const z=row.querySelector('[data-wf=woz]');
+  if(z){ z.classList.toggle('woz-ja',w.woz==='Onder'); z.classList.toggle('woz-nee',w.woz==='Boven'); if(S._try2) z.classList.toggle('err',!wozBekend(w));
+    z.title=wozTitel(w); z.setAttribute('aria-label',`WOZ-waarde ${adres(w)}, ${wozTitel(w)}`); }
+  row.querySelector('.seg.eig')?.classList.toggle('err',!!S._try2&&!w.eig);
+  const k=document.getElementById('wkop'); if(k) k.innerHTML=wKop();
+  updateLive(); markeerLeeg();
 }
 function parseNrs(s){
   const out=[];
@@ -677,7 +763,7 @@ function vMaatregelen(){
         <label><input type="radio" name="og" value="ja" ${S.offerteGebouw==='ja'?'checked':''} data-f="offerteGebouw">Ja, hele gebouw</label>
         <label><input type="radio" name="og" value="nee" ${S.offerteGebouw!=='ja'?'checked':''} data-f="offerteGebouw">Nee, alleen deze ${b} woningen</label>
       </div></div>`:''}
-    ${GROUPS.map(g=>`<div class="grp"><h3>${g.titel}</h3><p>${g.tekst}</p>${M.filter(m=>m.grp===g.id).map(mtCard).join('')}</div>`).join('')}
+    ${GROUPS.map(g=>`<div class="grp"><h3>${g.titel}<span class="gt">${g.tekst}</span></h3>${M.filter(m=>m.grp===g.id).map(mtCard).join('')}</div>`).join('')}
   </div>`;
 }
 function maxHtml(k){
@@ -698,7 +784,7 @@ function mtCard(m){
   return `<div class="mt ${on?'on':''}" data-m="${m.k}">
     <label class="tog"><input type="checkbox" data-mon ${on?'checked':''}>
       <span><span class="nm">${m.naam}</span><span class="eis">${m.uitleg}</span></span>
-      <span class="rt">${eur.format(m.tarief).replace(',00','')}<br>per ${m.perWoning?'woning':'m²'}</span></label>
+      <span class="rt">${eur.format(m.tarief).replace(',00','')} / ${m.perWoning?'woning':'m²'}</span></label>
     ${on?`<div class="body">
       ${m.perWoning?`<div class="out" data-live="vent:${m.k}"></div>`:`
       <div class="calc">
@@ -719,10 +805,12 @@ function vVerdeling(){
   const act=actief();
   if(!act.length) return `<div class="card"><h2>Verdeling per woning</h2><p>U heeft nog geen maatregelen gekozen. Ga terug naar stap 4.</p></div>`;
   const hand=act.some(m=>S.mode[m.k]==='hand'||vastIds(m.k).length);
+  const geen=S.woningen.length-B();
   const slim=heeftSlimmeData();
   return `<div class="card">
     <h2>Verdeling per woning</h2>
     <p class="intro">Per woning mag de subsidie niet hoger zijn dan ${eur.format(MAX_PER_WONING).replace(',00','')}. Past u een getal aan, dan krijgen de andere woningen automatisch de rest van de m² uit de offerte.</p>
+    ${geen?`<p class="tip">${geen} woning${geen===1?'':'en'} met een WOZ-waarde van ${eur.format(WOZ_GRENS).replace(',00','')} of hoger ${geen===1?'doet':'doen'} niet mee en ${geen===1?'staat':'staan'} hier niet bij.</p>`:''}
     <div class="row" style="justify-content:space-between;margin-bottom:12px">
       ${slim?`<div class="seg" role="radiogroup" aria-label="Verdeelmethode" style="margin:0">
         <label><input type="radio" name="vm" value="slim" ${S.verdeelMethode!=='gelijk'?'checked':''} data-f="verdeelMethode">Slim verdelen</label>
@@ -732,7 +820,7 @@ function vVerdeling(){
     ${slim&&S.verdeelMethode!=='gelijk'?'<p class="tip">Slim: naar woonoppervlakte (BAG). Dak- en zoldervloerisolatie gaan naar de bovenste verdieping en vloer- en bodemisolatie naar de begane grond, als de verdieping van alle woningen bekend is (EP-Online).</p>':''}
     <div class="tblwrap"><table class="vd" id="vd">
       <thead><tr><th class="l">Woning</th>${act.map(m=>`<th title="${m.perWoning?'':esc('Verdeeld '+sleutelTekst(m.k))}">${m.naam}<span class="rate">${m.perWoning?'ja/nee':sleutelKort(m.k)}</span></th>`).join('')}<th>Subsidie</th></tr></thead>
-      <tbody>${S.woningen.map(w=>`<tr data-w="${w.id}"><td class="l">${esc(adres(w))}</td>${act.map(m=>`<td data-c="${m.k}">${m.perWoning
+      <tbody>${WS().map(w=>`<tr data-w="${w.id}"><td class="l">${eb(w.label)}${esc(adres(w))}</td>${act.map(m=>`<td data-c="${m.k}">${m.perWoning
         ?`<input type="checkbox" data-vd="${m.k}" ${num(vdGet(w,m.k))===1?'checked':''} aria-label="${esc(m.naam)} ${esc(adres(w))}">`
         :`<input type="text" inputmode="decimal" data-vd="${m.k}" value="${fmtIn(num(vdGet(w,m.k)))}" class="${vastIds(m.k).includes(w.id)?'vast':''}" aria-label="${esc(m.naam)} m² ${esc(adres(w))}">`}</td>`).join('')}<td data-tot></td></tr>`).join('')}</tbody>
       <tfoot><tr><td class="l">Totaal</td>${act.map(m=>`<td data-ft="${m.k}"></td>`).join('')}<td data-ftot></td></tr></tfoot>
@@ -774,8 +862,8 @@ function vControle(){
         <tr><td>VvE</td><td class="r">${esc(S.vve||'–')}<br><span class="muted small">${esc(S.vveAdres||'')}</span></td></tr>
         <tr><td>A. Woningen in het gebouw</td><td class="r">${A()||'–'}</td></tr>
         <tr><td>B. Woningen in de aanvraag</td><td class="r">${b}</td></tr>
-        <tr><td>C. Eigenaar-bewoners</td><td class="r">${S.woningen.filter(w=>w.eig==='eigenaar-bewoner').length}</td></tr>
-        <tr><td>D. Eigenaar-verhuurders</td><td class="r">${S.woningen.filter(w=>w.eig==='eigenaar-verhuurder').length}</td></tr>
+        <tr><td>C. Eigenaar-bewoners</td><td class="r">${WS().filter(w=>w.eig==='eigenaar-bewoner').length}</td></tr>
+        <tr><td>D. Eigenaar-verhuurders</td><td class="r">${WS().filter(w=>w.eig==='eigenaar-verhuurder').length}</td></tr>
         <tr><td>E. Percentage appartementsrechten</td><td class="r">${A()?nf.format(r2(b/A()*100))+'%':'–'}</td></tr>
       </table>
       <table class="sum" style="margin-top:12px">
@@ -810,18 +898,20 @@ function vControle(){
 
 /* ======= Bronnen en eigen aanpassingen (controleerbaarheid) ======= */
 function bronnen(){
-  const ws=S.woningen, r=[];
+  const ws=WS(), alle=S.woningen, r=[];
   const n=f=>ws.filter(f).length;
   const zelf=(x)=>x?'zelf aangepast':'';
   r.push({wat:'Adres van de VvE', waarde:S.vveAdres||'–', bron:S.bron==='pdok'?'PDOK Locatieserver':'zelf ingevuld', let:''});
   if(S.bron==='pdok') r.push({wat:'Panden in de VvE', waarde:String(S.panden||1), bron:S.clusterOk?'VvE-clusterindex':'alleen dit pand (clusterindex niet beschikbaar)', let:S.clusterOk?'':'controleren'});
   r.push({wat:'Woningen in het gebouw (A)', waarde:String(A()||'–'), bron:S.autoA?'BAG (verblijfsobjecten met woonfunctie)':'zelf ingevuld', let:S.autoA&&S.autoA!==A()?`zelf aangepast (BAG: ${S.autoA})`:''});
-  r.push({wat:'Woningen in de aanvraag (B)', waarde:String(ws.length), bron:S.bron==='pdok'?'BAG':'zelf ingevuld', let:S.autoA&&ws.length!==S.autoA?`${S.autoA-ws.length>0?S.autoA-ws.length+' verwijderd':'toegevoegd'}`:''});
+  const geen=alle.length-ws.length;
+  r.push({wat:'Woningen in de aanvraag (B)', waarde:String(ws.length), bron:S.bron==='pdok'?'BAG':'zelf ingevuld', let:[S.autoA&&alle.length!==S.autoA?`${S.autoA-alle.length>0?S.autoA-alle.length+' verwijderd':'toegevoegd'}`:'', geen?`${geen} niet mee (WOZ ≥ ${nf0.format(WOZ_GRENS)})`:''].filter(Boolean).join(', ')});
   if(S.bouwjaar) r.push({wat:'Bouwjaar', waarde:String(S.bouwjaar), bron:'BAG', let:S.bouwjaar>=BOUWJAAR_VOOR?'na 1995':''});
   const mLab=n(w=>w.auto&&'label' in w.auto&&w.auto.label!==w.label), metEP=n(w=>w.auto?.labelBron==='EP-Online');
   if(ws.some(w=>w.auto)) r.push({wat:'Energielabels', waarde:`${metEP} met label`, bron:'EP-Online', let:mLab?`${mLab} zelf aangepast`:''});
-  const metWoz=n(w=>w.wozWaarde), mWoz=n(w=>w.auto?.woz&&w.auto.woz!==w.woz);
-  r.push({wat:'WOZ boven/onder € 596.000', waarde:`${metWoz} van ${ws.length} opgehaald`, bron:'WOZ-waardeloket, peildatum 1-1-2023', let:[mWoz?`${mWoz} zelf aangepast`:'', ws.length-metWoz?`${ws.length-metWoz} zelf ingevuld`:''].filter(Boolean).join(', ')});
+  const na=f=>alle.filter(f).length;
+  const metWoz=na(w=>w.auto?.wozWaarde), mWoz=na(w=>w.auto?.wozWaarde&&w.auto.wozWaarde!==w.wozWaarde);
+  r.push({wat:`WOZ-waarde (grens ${eur.format(WOZ_GRENS).replace(',00','')})`, waarde:`${alle.length-geen} onder, ${geen} boven grens`, bron:`WOZ-waardeloket, peildatum 1-1-2023 (${metWoz} van ${alle.length} opgehaald)`, let:[mWoz?`${mWoz} zelf aangepast`:'', alle.length-metWoz?`${alle.length-metWoz} zelf ingevuld`:''].filter(Boolean).join(', ')});
   r.push({wat:'Eigenaar-bewoner / verhuurder', waarde:`${n(w=>w.eig==='eigenaar-bewoner')} / ${n(w=>w.eig==='eigenaar-verhuurder')}`, bron:'zelf ingevuld', let:''});
   actief().forEach(m=>{
     const t=S.mt[m.k], o=S.opp3d?.[m.k];
@@ -877,12 +967,13 @@ function aanvraagData(){
     regeling:"Subsidieregeling verduurzaming Haarlemse VvE's 2026",
     vve:{naam:S.vve, adres:S.vveAdres, bouwjaar:S.bouwjaar||null},
     contact:{naam:S.contact?.naam, rol:S.contact?.rol||'', email:S.contact?.email, telefoon:S.contact?.tel||''},
-    aantallen:{A_gebouw:A(), B_aanvraag:b, C_eigenaarBewoners:S.woningen.filter(w=>w.eig==='eigenaar-bewoner').length, D_eigenaarVerhuurders:S.woningen.filter(w=>w.eig==='eigenaar-verhuurder').length},
+    aantallen:{A_gebouw:A(), B_aanvraag:b, C_eigenaarBewoners:WS().filter(w=>w.eig==='eigenaar-bewoner').length, D_eigenaarVerhuurders:WS().filter(w=>w.eig==='eigenaar-verhuurder').length},
     maatregelen:actief().map(m=>({code:m.k, naam:m.naam, eenheid:m.perWoning?'woningen':'m2', hoeveelheid:r2(m2Totaal(m)), tarief:m.tarief, bedrag:r2(m2Totaal(m)*m.tarief)})),
     totaalSubsidie:r2(t), gemiddeldPerWoning:b?r2(t/b):0,
     bronnen:bronnen().map(x=>({...x,wat:x.wat.trim()})),
-    woningen:S.woningen.map(w=>({adres:[w.straat,w.nr,w.toev].filter(Boolean).join(' '), woonplaats:w.plaats, woz:w.woz, wozWaarde:w.wozWaarde||null, eigenaar:w.eig, energielabel:w.label,
-      opgehaald:w.auto?{energielabel:w.auto.label, woz:w.auto.woz||null}:null, woonoppervlakte:w.opp||null, ligging:w.ligging||null,
+    nietInAanvraag:S.woningen.filter(w=>!inAanvraag(w)).map(w=>({adres:[w.straat,w.nr,w.toev].filter(Boolean).join(' '), woonplaats:w.plaats, wozWaarde:w.wozWaarde||null, reden:`WOZ-waarde ${WOZ_GRENS} of hoger`})),
+    woningen:WS().map(w=>({adres:[w.straat,w.nr,w.toev].filter(Boolean).join(' '), woonplaats:w.plaats, woz:w.woz, wozWaarde:w.wozWaarde||null, eigenaar:w.eig, energielabel:w.label,
+      opgehaald:w.auto?{energielabel:w.auto.label, wozWaarde:w.auto.wozWaarde||null}:null, woonoppervlakte:w.opp||null, ligging:w.ligging||null,
       slechteBouwdelen:w.label==='Onbekend'?bouwdelen(w):[], maatregelen:Object.fromEntries(actief().map(m=>[m.k,r2(num(vdGet(w,m.k)))]).filter(([,v])=>v)), subsidie:r2(bedragWoning(w))})),
   };
 }
@@ -966,8 +1057,11 @@ document.addEventListener('input',e=>{
   if(t.dataset.f){ S[t.dataset.f]=t.value; if(t.value.trim()) t.classList.remove('err'); if(t.dataset.f==='vveAdres') acZoek(t); if(t.dataset.f==='offerteGebouw'){ M.forEach(m=>{ if(S.mt[m.k]?.on) herverdeel(m.k); }); }
     if(t.dataset.f==='verdeelMethode'){ syncVerdeling(); render(); return; } updateLive(); save(); return; }
   const wEl=t.closest('[data-w]');
+  if(t.dataset.wf==='woz' && wEl){ const w=S.woningen.find(x=>x.id==wEl.dataset.w);
+    const v=parseInt(t.value.replace(/\D/g,''),10)||null; w.wozWaarde=v; w.woz=v?wozUit(v):''; save(); wLive(w); return; }
   if(t.dataset.wf && wEl){ const w=S.woningen.find(x=>x.id==wEl.dataset.w); w[t.dataset.wf]=t.value; save();
-    if(t.tagName==='SELECT'){ render(); }
+    if(t.type==='radio'){ wLive(w); }
+    else if(t.tagName==='SELECT'){ render(); }
     else { const h=wEl.querySelector('.head b'); if(h) h.lastChild.textContent=' '+adres(w); t.classList.toggle('err',!!S._try2&&!t.value&&t.dataset.wf!=='toev'&&t.dataset.wf!=='bdAnders'); }
     return; }
   if(t.dataset.bd && wEl){ const w=S.woningen.find(x=>x.id==wEl.dataset.w); w.bd=(w.bd||[]).filter(b=>b!==t.dataset.bd); if(t.checked) w.bd.push(t.dataset.bd); save(); if(S._try2) render(); return; }
@@ -999,6 +1093,7 @@ document.addEventListener('change',e=>{
       S=Object.assign(blank(),d); uid=Math.max(0,...S.woningen.map(w=>w.id||0))+1; render(); alert('Voortgang geladen.'); })
     .catch(()=>alert('Dit bestand kon niet worden gelezen.'));
   }
+  if(t.dataset.wf==='woz'){ const w=S.woningen.find(x=>x.id==t.closest('[data-w]')?.dataset.w); if(w) t.value=w.wozWaarde?nf0.format(w.wozWaarde):''; return; }
   if(t.dataset.vd && !t.closest('tr')) return;
   if(t.dataset.vd && t.type==='text'){ t.value=fmtIn(num(t.value)); }
 });
@@ -1076,8 +1171,7 @@ async function vulWoz(tok){
     const r=await wozOpPeildatum(w.nummeraanduiding);
     if(r.limiet){ limiet=true; break; }
     w.wozWaarde=r.waarde; n++;
-    if(r.waarde && !w.woz) w.woz=r.waarde<WOZ_GRENS?'Onder':'Boven';
-    if(r.waarde) (w.auto ||= {}).woz=w.woz;
+    if(r.waarde){ w.woz=wozUit(r.waarde); Object.assign(w.auto ||= {},{woz:w.woz,wozWaarde:r.waarde}); }
     save();
     setVveStatus({...vveStatus,bezig:true,wozTekst:`WOZ-waarden (1-1-2023) ophalen… ${n} van ${lijst.length}`});
     await new Promise(res=>setTimeout(res,Math.max(0,WOZ_INTERVAL_MS-(Date.now()-t0))));
@@ -1085,8 +1179,8 @@ async function vulWoz(tok){
   if(!nog()) return;
   const met=S.woningen.filter(w=>w.wozWaarde).length;
   setVveStatus({...vveStatus,bezig:false,wozTekst:limiet
-    ?`${met} WOZ-waarde${met===1?'':'n'} opgehaald; daarna was het maximum aantal opvragingen bij het Kadaster bereikt. Vul bij de overige woningen boven/onder zelf in.`
-    :`${met} WOZ-waarde${met===1?'':'n'} (1-1-2023) opgehaald en boven/onder ingevuld.${met<S.woningen.length?` Bij ${S.woningen.length-met} woning(en) was geen WOZ-waarde beschikbaar.`:''}`});
+    ?`${met} WOZ-waarde${met===1?'':'n'} opgehaald; daarna was het maximum aantal opvragingen bij het Kadaster bereikt. Vul bij de overige woningen de WOZ-waarde zelf in.`
+    :`${met} WOZ-waarde${met===1?'':'n'} (1-1-2023) opgehaald en ingevuld.${met<S.woningen.length?` Bij ${S.woningen.length-met} woning(en) was geen WOZ-waarde beschikbaar.`:''}`});
   if(S.step===2 && !document.activeElement?.closest?.('#wlist')) render();
 }
 const PIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 14.314 0z"/></svg>';
@@ -1256,7 +1350,7 @@ function patchSheet(xml, cells){ // cells: {A1:val}
 }
 function buildCells(){
   const a=A(), b=B(), act=actief();
-  const C=S.woningen.filter(w=>w.eig==='eigenaar-bewoner').length, D=S.woningen.filter(w=>w.eig==='eigenaar-verhuurder').length;
+  const ws=WS(), C=ws.filter(w=>w.eig==='eigenaar-bewoner').length, D=ws.filter(w=>w.eig==='eigenaar-verhuurder').length;
   const s1={E19:a,E20:b,E21:C,E22:D,E23:a?b/a:0,E24:b*MAX_PER_WONING};
   let tot=0;
   M.forEach(m=>{ const q=S.mt[m.k]?.on?r2(m2Totaal(m)):0; const g=q*m.tarief; tot+=g; s1['F'+m.row]=q||null; s1['G'+m.row]=g; });
@@ -1266,7 +1360,7 @@ function buildCells(){
   const colName=n=>{let s='';while(n>0){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26);}return s;};
   let sum2=0;
   for(let i=0;i<MAX_ROWS;i++){
-    const r=32+i, w=S.woningen[i];
+    const r=32+i, w=ws[i];
     let rowTot=0;
     M.forEach(m=>{ const q=w&&S.mt[m.k]?.on?r2(num(vdGet(w,m.k))):0; const ec=colName(colIdx(m.col)+1); s2[m.col+r]=q||null; s2[ec+r]=q*m.tarief; rowTot+=q*m.tarief; });
     s2['I'+r]=rowTot; sum2+=rowTot;
@@ -1293,7 +1387,8 @@ async function makeXlsx(opts={download:true}){
 function buildReport(){
   syncVerdeling();
   const b=B(), t=totaal(), act=actief(), d=new Date().toLocaleDateString('nl-NL');
-  const C=S.woningen.filter(w=>w.eig==='eigenaar-bewoner').length, D=S.woningen.filter(w=>w.eig==='eigenaar-verhuurder').length;
+  const ws=WS(), uit=S.woningen.filter(w=>!inAanvraag(w));
+  const C=ws.filter(w=>w.eig==='eigenaar-bewoner').length, D=ws.filter(w=>w.eig==='eigenaar-verhuurder').length;
   $('#report').innerHTML=`
   <h1>Rekentool Subsidieregeling verduurzaming Haarlemse VvE's 2026</h1>
   <p><b>${esc(S.vve||'VvE')}</b>${S.vveAdres?' · '+esc(S.vveAdres):''} · ${d}</p>
@@ -1312,9 +1407,10 @@ function buildReport(){
   <h2 class="pb">2. Invulblad woningbestand</h2>
   <p>Totaal subsidiebedrag: <b>${eur.format(t)}</b> · Maximaal subsidiebedrag: ${eur.format(b*MAX_PER_WONING)}</p>
   <table><tr><th>Adres</th><th>Woonplaats</th><th>WOZ</th><th>Eigenaar</th><th>Label</th><th>Slechte bouwdelen</th>${act.map(m=>`<th class="r">${m.naam}${m.perWoning?'':' (m²)'}</th>`).join('')}<th class="r">Subsidie</th></tr>
-  ${S.woningen.map(w=>`<tr><td>${esc([w.straat,w.nr,w.toev].filter(Boolean).join(' '))}</td><td>${esc(w.plaats)}</td><td>${esc(w.woz)}${w.auto?.woz&&w.auto.woz!==w.woz?' *':''}</td><td>${esc(w.eig)}</td><td>${esc(w.label)}${w.auto&&'label' in w.auto&&w.auto.label!==w.label?' *':''}</td><td>${w.label==='Onbekend'?esc(bouwdelen(w).join(', ')):''}</td>${act.map(m=>`<td class="r">${m.perWoning?(num(vdGet(w,m.k))?'1':''):nf.format(r2(num(vdGet(w,m.k))))+(vastIds(m.k).includes(w.id)?' *':'')}</td>`).join('')}<td class="r">${eur.format(bedragWoning(w))}</td></tr>`).join('')}
+  ${ws.map(w=>`<tr><td>${esc([w.straat,w.nr,w.toev].filter(Boolean).join(' '))}</td><td>${esc(w.plaats)}</td><td>${w.wozWaarde?nf0.format(w.wozWaarde)+' ':''}(${esc(w.woz)})${w.auto?.wozWaarde&&w.auto.wozWaarde!==w.wozWaarde?' *':''}</td><td>${esc(w.eig)}</td><td>${esc(w.label)}${w.auto&&'label' in w.auto&&w.auto.label!==w.label?' *':''}</td><td>${w.label==='Onbekend'?esc(bouwdelen(w).join(', ')):''}</td>${act.map(m=>`<td class="r">${m.perWoning?(num(vdGet(w,m.k))?'1':''):nf.format(r2(num(vdGet(w,m.k))))+(vastIds(m.k).includes(w.id)?' *':'')}</td>`).join('')}<td class="r">${eur.format(bedragWoning(w))}</td></tr>`).join('')}
   </table>
   <p style="font-size:8pt">* = zelf aangepast ten opzichte van de opgehaalde waarde of de automatische verdeling.</p>
+  ${uit.length?`<p style="font-size:8.5pt"><b>Niet in de aanvraag</b> (WOZ-waarde ${eur.format(WOZ_GRENS).replace(',00','')} of hoger): ${uit.map(w=>esc(adres(w))+(w.wozWaarde?' ('+nf0.format(w.wozWaarde)+')':'')).join(', ')}.</p>`:''}
   <h2 class="pb">3. Bronnen en eigen aanpassingen</h2>
   ${bronnenTabel().replace('class="sum"','')}
   <p style="margin-top:10pt;font-size:8pt">Aan de uitkomsten van de berekening kunnen geen rechten worden ontleend. De uitkomst van de berekening is niet aan te merken als een aanvraag voor subsidie.</p>`;
