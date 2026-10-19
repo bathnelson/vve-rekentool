@@ -140,6 +140,23 @@ test('70%-eis na inlezen: met het dakoppervlak uit 3D BAG hoeft niets meer beves
   assert.match(json(run, 'checks().err.map(e=>e.t)').join('\n'), /Dakisolatie: 80 m² is 53% van het hele dak \(150 m²\); minimaal 70% is vereist/);
 });
 
+test('oppervlaktecheck: 10% marge op 3D BAG, aan beide kanten', async () => {
+  const buf = await maakBestand({ aantalWoningenGebouw: 4, woningen: woningen(4, i => ({ wozWaarde: i === 3 ? 800000 : 300000 })), maatregelen: { dak: '80' } });
+  const { run } = await leesIn(buf);
+  const fout = () => json(run, 'checks().err.map(e=>e.t)').join('\n'), waarsch = () => json(run, 'checks().warn.map(e=>e.t)').join('\n');
+  run('S.opp3d={J:125}'); // 64%: onder 70, binnen de marge
+  assert.doesNotMatch(fout(), /Dakisolatie: .*70%/);
+  assert.equal(run('oppKlasse("J")'), 'ok');
+  assert.match(run('oppPctHtml("J")'), /binnen de marge van 10%/);
+  run('S.opp3d={J:130}'); // 62%: ook met marge te weinig
+  assert.match(fout(), /62% van het hele dak .*met 10% marge op 3D BAG: 63%/);
+  run('S.opp3d={J:75}'); // 107%: MJOP groter dan 3D BAG, geen waarschuwing
+  assert.doesNotMatch(waarsch(), /Dakisolatie: .*meer dan/);
+  assert.equal(run('oppKlasse("J")'), 'ok');
+  run('S.opp3d={J:70}'); // 114%
+  assert.match(waarsch(), /Dakisolatie: 80 m² is meer dan het hele dak .*ook met 10% marge/);
+});
+
 test('adres kiezen na inlezen: woningen blijven, koppeling met de BAG en WOZ-controle', async () => {
   const buf = await maakBestand({ woningen: woningen(2, i => ({ toevoeging: i ? 'A' : '' })), maatregelen: { dak: '40' } });
   const { run } = await leesIn(buf);
