@@ -48,8 +48,9 @@ test('rondje: wat de rekenhulp uitvoert, leest hij identiek weer in', async () =
   assert.deepEqual(json(run, '[S.woningen[2].bd, S.woningen[2].bdAnders]'), [['Dak', 'Gevel / muren'], 'Schuur']);
   // Dak: 100 × 4/6 = 66,67 m², gelijk verdeeld; die verdeling blijft staan.
   assert.deepEqual(json(run, 'WS().map(w=>vdGet(w,"J"))'), [16.67, 16.67, 16.67, 16.66]);
-  assert.equal(run('S.mt.J.offerte'), '66,67');
-  assert.equal(run('S.offerteGebouw'), 'nee');
+  // De offerte wordt terugherleid naar het hele gebouw (66,67 m² voor 4 van de 6 woningen).
+  assert.equal(run('S.mt.J.offerte'), '100');
+  assert.equal(run('S.offerteGebouw'), 'ja');
   assert.deepEqual(json(run, 'WS().map(w=>vdGet(w,"T"))'), [1, 1, 1, 1]);
   assert.equal(run('r2(totaal())'), r2(66.67 * 30 + 13.33 * 60 + 4000));
   assert.deepEqual(json(run, 'importChecks()'), []);
@@ -123,4 +124,37 @@ test('een ander bestand geeft een duidelijke fout', async () => {
   await assert.rejects(() => ctx.run('leesRekentool(__buf)'), /tabbladen "1_Rekenblad" en "2_invulblad" ontbreken/);
   ctx.window.__buf = new Uint8Array([1, 2, 3]);
   await assert.rejects(() => ctx.run('leesRekentool(__buf)'), /geen Excel-bestand/);
+});
+
+test('70%-eis na inlezen: met het dakoppervlak uit 3D BAG hoeft niets meer bevestigd te worden', async () => {
+  const buf = await maakBestand({ aantalWoningenGebouw: 4, woningen: woningen(4, i => ({ wozWaarde: i === 3 ? 800000 : 300000 })), maatregelen: { dak: '80' } });
+  const { run } = await leesIn(buf);
+  // 60 m² voor 3 van de 4 woningen → offerte voor het hele gebouw 80 m².
+  assert.equal(run('S.mt.J.offerte'), '80');
+  assert.match(json(run, 'checks().err.map(e=>e.t)').join('\n'), /Dakisolatie: bevestig dat het om minimaal 70%/);
+  run('S.opp3d={J:100}');
+  assert.equal(run('Math.round(oppPct("J"))'), 80);
+  assert.doesNotMatch(json(run, 'checks().err.map(e=>e.t)').join('\n'), /Dakisolatie: .*70%/);
+  run('S.opp3d={J:150}');
+  assert.match(json(run, 'checks().err.map(e=>e.t)').join('\n'), /Dakisolatie: 80 m² is 53% van het hele dak \(150 m²\); minimaal 70% is vereist/);
+});
+
+test('adres kiezen na inlezen: woningen blijven, koppeling met de BAG en WOZ-controle', async () => {
+  const buf = await maakBestand({ woningen: woningen(2, i => ({ toevoeging: i ? 'A' : '' })), maatregelen: { dak: '40' } });
+  const { run } = await leesIn(buf);
+  const vbos = [
+    { openbare_ruimte_naam: 'Teststraat', huisnummer: 1, hoofdadres_identificatie: '0392200000000001', oppervlakte: 70 },
+    { openbare_ruimte_naam: 'Teststraat', huisnummer: 2, huisletter: 'A', hoofdadres_identificatie: '0392200000000002', oppervlakte: 55 },
+    { openbare_ruimte_naam: 'Teststraat', huisnummer: 3, hoofdadres_identificatie: '0392200000000003', oppervlakte: 60 },
+  ];
+  run(`vulBijImport(++vulToken, ${JSON.stringify(vbos)}, ['p1'], {bouwjaar:1930}, true, '')`);
+  run('vulToken++'); // ophaalacties op de achtergrond stoppen
+  assert.equal(run('S.woningen.length'), 2);
+  assert.deepEqual(json(run, 'S.woningen.map(w=>[w.nummeraanduiding,w.opp])'), [['0392200000000001', 70], ['0392200000000002', 55]]);
+  assert.equal(run('S.autoA'), 3);
+  assert.equal(run('S.bouwjaar'), 1930);
+  assert.deepEqual(json(run, 'WS().map(w=>vdGet(w,"J"))'), [20, 20]);
+  // WOZ uit het Kadaster wijkt af van het bestand: dat wordt gemeld.
+  run('const w=S.woningen[1]; w.wozWaarde=650000; w.woz=wozUit(650000)');
+  assert.match(json(run, 'importChecks().map(x=>x.t)').join('\n'), /Teststraat 2 A: in het bestand staat WOZ "onder", maar de WOZ-waarde op 1-1-2023 is €\s650\.000 \(boven de grens\)/);
 });
