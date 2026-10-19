@@ -1,0 +1,12 @@
+{
+  "name": "vve-rekentool",
+  "private": true,
+  "description": "Tests voor de rekenlogica van index.html",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0",
+    "jszip": "^3.10.1"
+  }
+}
