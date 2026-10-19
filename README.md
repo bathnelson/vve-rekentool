@@ -11,3 +11,9 @@ Eén statische pagina (`index.html`), gehost op GitHub Pages: https://bathnelson
 
 Het Excel-template zit ingebed in `index.html` (base64), ontdaan van persoons- en SharePoint-metadata.
 De adresverkenner kan de rekenhulp ook openen met de woningen al ingevuld via `#vve=<base64url-JSON>`.
+
+## Tests
+
+`npm install && npm test` draait de tests in `test/` (Node 22, `node:test`). Ze laden `index.html` in jsdom
+en controleren de subsidieberekening (WOZ-grens, verdeling over woningen, tarieven, totalen) en de invulling
+van het Excel-template. GitHub Actions draait ze bij elke push naar `main` en bij elke pull request.
