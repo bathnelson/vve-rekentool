@@ -1622,12 +1622,17 @@ async function leesRekentool(data){
   };
 }
 /* Slechte bouwdelen uit kolom H ("Dak, Gevel / muren") terug naar de keuzes van de rekenhulp. */
+/* Slechte bouwdelen uit kolom H terug naar de keuzes van de rekenhulp. Ruim: mensen schrijven "dak + panelen in kozijn",
+   "enkel glas en voordeur", "Dak, Gevel / muren". Per stukje tekst worden alle herkende bouwdelen genomen. */
+const BD_WOORDEN=[[/dak|zolder|vliering/,'Dak'],[/gevel|muur|muren|spouw/,'Gevel / muren'],[/vloer|bodem|kruip/,'Vloer'],
+  [/kozijn|panee?l/,'Kozijnen'],[/glas|raam|ramen|ruit|beglazing/,'Glas'],[/deur/,'Deuren'],[/ventil|luchtafvoer|wtw/,'Ventilatie']];
 function bdUitTekst(t){
   const bd=[], anders=[]; let geen=false;
-  String(t||'').split(/[,;\n]+|\s+en\s+/i).map(x=>x.trim()).filter(Boolean).forEach(x=>{
-    const l=x.toLowerCase();
-    const b=l.startsWith('geen')?'geen':/dak/.test(l)?'Dak':/gevel|muur|muren/.test(l)?'Gevel / muren':/vloer|bodem|kruip/.test(l)?'Vloer':/kozijn/.test(l)?'Kozijnen':/glas|raam|ramen/.test(l)?'Glas':/deur/.test(l)?'Deuren':/ventil/.test(l)?'Ventilatie':'';
-    if(b==='geen') geen=true; else if(b){ if(!bd.includes(b)) bd.push(b); } else anders.push(x);
+  String(t||'').split(/[,;\n+&/|]+|\s+(?:en|and|plus)\s+/i).map(x=>x.trim()).filter(Boolean).forEach(x=>{
+    const l=x.toLowerCase(), hier=BD_WOORDEN.filter(([re])=>re.test(l)).map(([,b])=>b);
+    if(hier.length) hier.forEach(b=>{ if(!bd.includes(b)) bd.push(b); });
+    else if(/^geen\b/.test(l)) geen=true;
+    else if(!/^(en|of|slecht[e]?|matig[e]?|oud[e]?|niet( ge[iï]soleerd)?|onge[iï]soleerd|isolatie|enz\.?|etc\.?|-)$/.test(l)) anders.push(x);
   });
   return {bd, bdAnders:anders.join(', '), bdGeen:geen&&!bd.length&&!anders.length};
 }
@@ -1662,6 +1667,10 @@ function vanRekentool(d, bestand){
     s.vast[m.k]=s.woningen.map(w=>w.id);
     if(m.perWoning) s.mode[m.k]='hand';
   });
+  // Staan dezelfde slechte bouwdelen bij alle woningen zonder label, dan gelden ze voor het hele gebouw. Per woning
+  // blijven ze ook staan, zodat er niets verloren gaat als een bouwdeel volgens de splitsingsakte individueel is.
+  const zl=s.woningen.filter(w=>w.woz!=='Boven' && (!w.label||w.label==='Onbekend'));
+  if(zl.length>=2 && zl.every(w=>w.bd?.length)) s.bdGebouw=BOUWDELEN.filter(b=>zl.every(w=>w.bd.includes(b)));
   s.importInfo={bestand:String(bestand||''), A:d.A, B:d.B, C:d.C, D:d.D, m2:d.m2, tarief:d.tarief, totaal:d.totaal};
   return s;
 }
