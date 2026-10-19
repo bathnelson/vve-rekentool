@@ -438,7 +438,8 @@ function A(){return Math.round(num(S.A));}
 // KvK-nummer van de VvE: 8 cijfers (spaties en punten mogen bij het typen).
 function kvk(){ return String(S.kvk||'').replace(/\D/g,''); }
 function kvkOk(){ return /^\d{8}$/.test(kvk()); }
-function vveOk(){ return A()>0 && !!S.vve.trim() && !!S.vveAdres.trim() && kvkOk(); }
+// KvK-nummer is (voorlopig) niet verplicht: ontbreekt het of klopt het niet, dan volgt een waarschuwing.
+function vveOk(){ return A()>0 && !!S.vve.trim() && !!S.vveAdres.trim(); }
 // Alleen woningen met een WOZ-waarde onder de grens krijgen subsidie; de rest telt verder nergens mee.
 function inAanvraag(w){ return w.woz!=='Boven'; }
 function wozBekend(w){ return w.woz==='Boven'||w.woz==='Onder'; }
@@ -515,7 +516,6 @@ function totaal(){ return actief().reduce((s,m)=>s+m2Totaal(m)*m.tarief,0); }
 function checks(){
   const err=[], warn=[]; const a=A(), b=B();
   if(!S.vve.trim()) err.push({s:1,t:'Vul de naam van de VvE in.'});
-  if(!kvkOk()) err.push({s:1,t:'Vul het KvK-nummer van de VvE in (8 cijfers).'});
   if(!S.vveAdres.trim()) err.push({s:1,t:'Vul het adres van de VvE in.'});
   if(!(a>0)) err.push({s:1,t:'Vul het aantal woningen in het gebouw in.'});
   if(splitsActief() && !splitsKlaar()) err.push({s:1,t:'Geef bij "Bouwdelen volgens de splitsingsakte" per bouwdeel aan of het collectief of individueel is.'});
@@ -550,6 +550,8 @@ function checks(){
     if(glas>0 && glas<3) err.push({s:4,t:`${adres(w)}: glas, panelen en deuren samen ${nf.format(glas)} m², minimaal 3 m² per woning.`});
     act.filter(m=>m.perWoning).forEach(m=>{ const v=num(vdGet(w,m.k)); if(v!==0&&v!==1) err.push({s:4,t:`${adres(w)}: ventilatie kan alleen 0 of 1 zijn.`}); });
   });
+  if(!kvk()) warn.push({s:1,t:'Het KvK-nummer van de VvE is niet ingevuld. Dat is nu nog niet verplicht, maar vul het in als u het heeft.'});
+  else if(!kvkOk()) warn.push({s:1,t:`Het KvK-nummer ${kvk()} heeft geen 8 cijfers. Controleer het nummer.`});
   if(S.bouwjaar>=BOUWJAAR_VOOR) warn.push({s:1,t:`Het gebouw is volgens de BAG in ${S.bouwjaar} gebouwd. De regeling geldt voor gebouwen die vóór ${BOUWJAAR_VOOR} zijn opgeleverd.`});
   Object.keys(OPP3D).forEach(k=>{ const t=S.mt[k], tot=S.opp3d?.[k]; if(t?.on&&tot&&oppPct(k)>100) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan ${OPP3D[k].wat} volgens 3D BAG (${nf.format(tot)} m²). Controleer de offerte.`}); });
   Object.keys(MAX3D).forEach(k=>{ const t=S.mt[k], max=S.opp3d?.[k]; if(t?.on&&max&&num(t.offerte)>max) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan alle buitenmuren samen volgens 3D BAG (${nf.format(max)} m²). Controleer de offerte.`}); });
@@ -597,13 +599,12 @@ function renderSteps(){
 }
 function canJump(i){ return i<=S.maxStep; }
 // Verplichte velden die nog leeg zijn krijgen een gele achtergrond (direct, niet pas na "Volgende").
-const VERPLICHT='[data-f=vve],[data-f=kvk],[data-f=vveAdres],[data-f=A],[data-wf=straat],[data-wf=nr],[data-wf=plaats],[data-wf=woz],[data-wf=eig],[data-wf=label],[data-mf=offerte],[data-mf=eisOk],[data-mf=ok70],[data-c=naam],[data-c=email],[data-c=akkoord]';
+const VERPLICHT='[data-f=vve],[data-f=vveAdres],[data-f=A],[data-wf=straat],[data-wf=nr],[data-wf=plaats],[data-wf=woz],[data-wf=eig],[data-wf=label],[data-mf=offerte],[data-mf=eisOk],[data-mf=ok70],[data-c=naam],[data-c=email],[data-c=akkoord]';
 function markeerLeeg(){
   document.querySelectorAll(VERPLICHT).forEach(el=>{
     if(el.type==='radio') return;
     let leeg = el.type==='checkbox' ? !el.checked : !String(el.value).trim();
     if(el.dataset.f==='A') leeg=!(num(el.value)>0);
-    if(el.dataset.f==='kvk') leeg=!kvkOk();
     if(el.dataset.wf==='label' && labelOptioneel()) leeg=false;
     if(el.dataset.wf==='woz'){ const w=S.woningen.find(x=>x.id==el.closest('[data-w]')?.dataset.w); leeg=!(w&&wozBekend(w)); }
     if(el.dataset.mf==='offerte') leeg=!(num(el.value)>0);
@@ -690,10 +691,10 @@ function vVvE(){
       <input type="text" data-f="vve" value="${esc(S.vve)}" autocomplete="organization" placeholder="Bijv. VvE De Linde" class="${S._try1&&!S.vve.trim()?'err':''}">
       <span class="hint">Zoals in de statuten.</span>
       ${S._try1&&!S.vve.trim()?'<span class="fielderr">Vul de naam van de VvE in.</span>':''}</label>
-    <label class="fld"><span class="l">KvK-nummer</span>
-      <input type="text" inputmode="numeric" data-f="kvk" value="${esc(S.kvk||'')}" maxlength="12" placeholder="8 cijfers" class="num ${S._try1&&!kvkOk()?'err':''}">
+    <label class="fld"><span class="l">KvK-nummer <span class="muted">(niet verplicht)</span></span>
+      <input type="text" inputmode="numeric" data-f="kvk" value="${esc(S.kvk||'')}" maxlength="12" placeholder="8 cijfers" class="num ${kvk()&&!kvkOk()?'err':''}">
       <span class="hint">Van de VvE, bij de KvK.</span>
-      ${S._try1&&!kvkOk()?`<span class="fielderr">${kvk()?'Een KvK-nummer heeft 8 cijfers.':'Vul het KvK-nummer in.'}</span>`:''}</label>
+      ${kvk()&&!kvkOk()?'<span class="fielderr">Een KvK-nummer heeft 8 cijfers.</span>':''}</label>
     <label class="fld"><span class="l">Aantal woningen</span>
       <input type="text" inputmode="numeric" data-f="A" value="${esc(S.A)}" class="num ${S._try1&&!(a>0)?'err':''}">
       <span class="hint">In het hele gebouw, ook die niet meedoen.</span>
@@ -1630,14 +1631,21 @@ function bdUitTekst(t){
   });
   return {bd, bdAnders:anders.join(', '), bdGeen:geen&&!bd.length&&!anders.length};
 }
+/* Naam van de VvE uit de bestandsnaam, bijv. "20261019_VvE De Linde_Rekentool.xlsx" → "VvE De Linde".
+   Datums, versienummers en woorden als "rekentool" vallen weg. */
+function vveUitBestandsnaam(bestand){
+  const weg=/^(rekentool|rekenhulp|rekenblad|invulblad|tabblad|svve|subsidie|subsidieregeling|verduurzaming|isolatie|ingevuld|definitief|concept|kopie|copy|final|versie|v\d+|\(\d+\)|\d{6,8})$/i;
+  return String(bestand||'').replace(/^.*[\\/]/,'').replace(/\.[a-z0-9]+$/i,'')
+    .replace(/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}-\d{1,2}-\d{2,4}\b/g,' ')
+    .split(/[_\s]+/).filter(w=>w&&!weg.test(w)&&!/^[-–]+$/.test(w)).join(' ').trim();
+}
 /* Maakt van een ingelezen rekentool een nieuwe formulierstatus. De m² per woning blijven staan zoals in het bestand. */
 function vanRekentool(d, bestand){
   // De m² in het bestand zijn het deel voor de woningen in de aanvraag. Zoals de rekenhulp zelf rekent (offerte voor het
   // hele gebouw, aandeel B/A) wordt de offerte terugherleid naar het hele gebouw; dan klopt ook de 70%-check met 3D BAG.
   const inAanvr=d.woningen.filter(r=>String(r.woz).trim().toLowerCase()!=='boven').length, schaal=d.A>0&&inAanvr>0&&inAanvr<=d.A?d.A/inAanvr:0;
   const s={step:STEPS.length-1, maxStep:STEPS.length-1, vve:'', vveAdres:'', A:d.A?String(d.A):'', offerteGebouw:schaal?'ja':'nee', woningen:[], mt:{}, verdeling:{}, mode:{}, vast:{}};
-  const naam=String(bestand||'').replace(/\.xlsx?$/i,'').split('_');
-  if(naam.length>=3 && /^\d{8}$/.test(naam[0])) s.vve=naam.slice(1,-1).join('_').trim(); // [datum]_[naam VvE]_Rekentool
+  s.vve=vveUitBestandsnaam(bestand);
   const keuze=(v,opties)=>opties.find(o=>o.toLowerCase()===String(v).trim().toLowerCase())||'';
   d.woningen.forEach(r=>{
     let label=String(r.label).trim().toUpperCase(); label=/^A\+*$/.test(label)?'A':/^[A-G]$/.test(label)?label:label.startsWith('ONB')||label.startsWith('GEEN')?'Onbekend':'';
