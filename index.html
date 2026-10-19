@@ -538,7 +538,7 @@ function checks(){
   act.forEach(m=>{
     const t=S.mt[m.k];
     if(!m.perWoning && !(num(t.offerte)>0)) err.push({s:3,t:`${m.naam}: vul het aantal m² uit de offerte in.`});
-    if(OPP3D[m.k]&&S.opp3d?.[m.k]){ if(oppPct(m.k)<70) err.push({s:3,t:`${m.naam}: ${nf.format(num(t.offerte))} m² is ${nf.format(Math.round(oppPct(m.k)))}% van ${OPP3D[m.k].wat} (${nf.format(S.opp3d[m.k])} m²); minimaal 70% is vereist.`}); }
+    if(OPP3D[m.k]&&S.opp3d?.[m.k]){ if(oppPct(m.k)<OPP_MIN) err.push({s:3,t:`${m.naam}: ${nf.format(num(t.offerte))} m² is ${nf.format(Math.round(oppPct(m.k)))}% van ${OPP3D[m.k].wat} (${nf.format(S.opp3d[m.k])} m²); minimaal 70% is vereist (met 10% marge op 3D BAG: ${OPP_MIN}%).`}); }
     else if(m.min==='70' && !t.ok70) err.push({s:3,t:`${m.naam}: bevestig dat het om ${m.minTekst} gaat.`});
     if(!t.eisOk) err.push({s:3,t:`${m.naam}: bevestig dat de offerte voldoet aan de eis (${m.eis}).`});
   });
@@ -553,7 +553,7 @@ function checks(){
   if(!kvk()) warn.push({s:1,t:'Het KvK-nummer van de VvE is niet ingevuld. Dat is nu nog niet verplicht, maar vul het in als u het heeft.'});
   else if(!kvkOk()) warn.push({s:1,t:`Het KvK-nummer ${kvk()} heeft geen 8 cijfers. Controleer het nummer.`});
   if(S.bouwjaar>=BOUWJAAR_VOOR) warn.push({s:1,t:`Het gebouw is volgens de BAG in ${S.bouwjaar} gebouwd. De regeling geldt voor gebouwen die vóór ${BOUWJAAR_VOOR} zijn opgeleverd.`});
-  Object.keys(OPP3D).forEach(k=>{ const t=S.mt[k], tot=S.opp3d?.[k]; if(t?.on&&tot&&oppPct(k)>100) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan ${OPP3D[k].wat} volgens 3D BAG (${nf.format(tot)} m²). Controleer de offerte.`}); });
+  Object.keys(OPP3D).forEach(k=>{ const t=S.mt[k], tot=S.opp3d?.[k]; if(t?.on&&tot&&oppPct(k)>OPP_MAX) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan ${OPP3D[k].wat} volgens 3D BAG (${nf.format(tot)} m²), ook met 10% marge. Controleer de offerte.`}); });
   Object.keys(MAX3D).forEach(k=>{ const t=S.mt[k], max=S.opp3d?.[k]; if(t?.on&&max&&num(t.offerte)>max) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan alle buitenmuren samen volgens 3D BAG (${nf.format(max)} m²). Controleer de offerte.`}); });
   if(nGeen) warn.push({s:2,t:`${nGeen} woning${nGeen===1?' heeft':'en hebben'} een WOZ-waarde van ${eur.format(WOZ_GRENS).replace(',00','')} of hoger en ${nGeen===1?'telt':'tellen'} niet mee in de aanvraag.`});
   const geenSlecht=WS().filter(w=>lbl(w)==='Onbekend'&&bdGeen(w)).length;
@@ -883,12 +883,14 @@ function maxHtml(k){
     :`Maximaal ${nf.format(max)} m²: alle buitenmuren samen volgens 3D BAG, inclusief ramen en deuren.`;
 }
 function chkRegel(soort,k,klasse,html){ return `<div class="chk ${klasse}" data-live="${soort}:${k}"><span class="ic">${klasse==='ok'?'✓':klasse==='warn'?'!':'i'}</span><span class="tx">${html}</span></div>`; }
-function oppKlasse(k){ const p=oppPct(k); return !num(S.mt[k]?.offerte)?'info':p>=70&&p<=100?'ok':'warn'; }
+// 3D BAG zit soms onder de waarde uit het MJOP; daarom 10% marge bij de oppervlaktecheck.
+const OPP_MARGE=.1, OPP_MIN=Math.round(70*(1-OPP_MARGE)), OPP_MAX=Math.round(100*(1+OPP_MARGE));
+function oppKlasse(k){ const p=oppPct(k); return !num(S.mt[k]?.offerte)?'info':p>=OPP_MIN&&p<=OPP_MAX?'ok':'warn'; }
 function oppPct(k){ const tot=S.opp3d?.[k]; return tot ? num(S.mt[k]?.offerte)/tot*100 : 0; }
 function oppPctHtml(k){
   const p=oppPct(k), tot=nf.format(S.opp3d[k]);
   return num(S.mt[k]?.offerte)
-    ? `${nf.format(Math.round(p))}% van ${OPP3D[k].wat} (${tot} m² volgens 3D BAG)${p<70?' — minimaal 70% is vereist':p>100?'. Dat is meer dan het hele oppervlak; controleer de offerte.':''}`
+    ? `${nf.format(Math.round(p))}% van ${OPP3D[k].wat} (${tot} m² volgens 3D BAG)${p<OPP_MIN?` — minimaal 70% is vereist (met 10% marge op 3D BAG: ${OPP_MIN}%)`:p>OPP_MAX?'. Dat is meer dan het hele oppervlak, ook met 10% marge; controleer de offerte.':p<70||p>100?'; valt binnen de marge van 10% voor 3D BAG':''}`
     : `${OPP3D[k].wat[0].toUpperCase()+OPP3D[k].wat.slice(1)} is ${tot} m² volgens 3D BAG`;
 }
 function mtCard(m){
