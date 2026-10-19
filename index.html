@@ -960,7 +960,7 @@ function vControle(){
   const act=actief();
   return `<div class="card">
     <h2>Controle</h2>
-    ${S.importInfo?`<div class="note info small">Ingelezen uit <b>${esc(S.importInfo.bestand||'Excel-bestand')}</b>: ${S.woningen.length} woning${S.woningen.length===1?'':'en'}. De m² per woning zijn overgenomen zoals ze in het bestand stonden. Vul de VvE-gegevens aan en bevestig per maatregel de prestatie-eis; verschillen met het bestand staan bij de aandachtspunten.</div>`:''}
+    ${S.importInfo?`<div class="note info small">Ingelezen uit <b>${esc(S.importInfo.bestand||'Excel-bestand')}</b>: ${S.woningen.length} woning${S.woningen.length===1?'':'en'}. De m² per woning zijn overgenomen zoals ze in het bestand stonden. Vul bij stap 2 de VvE-gegevens aan. Kiest u daar het adres, dan worden ook de WOZ-waarden en het dak- en vloeroppervlak (3D BAG) opgehaald, zodat de 70%-eis automatisch wordt gecontroleerd. Verschillen met het bestand staan bij de aandachtspunten.</div>`:''}
     <div class="kpis">
       <div class="kpi"><div class="k">Totaal subsidie</div><div class="v">${eur.format(t)}</div></div>
       <div class="kpi"><div class="k">Gemiddeld per woning</div><div class="v">${eur.format(gem)}</div></div>
@@ -1423,6 +1423,7 @@ async function vulVvE(locId){
       .sort((a,b)=>(a.openbare_ruimte_naam||'').localeCompare(b.openbare_ruimte_naam||'')||(a.huisnummer??0)-(b.huisnummer??0)||`${a.huisletter||''}${a.toevoeging||''}`.localeCompare(`${b.huisletter||''}${b.toevoeging||''}`));
     if(!vbos.length) throw new Error('geen woningen');
     if(!nog()) return;
+    if(S.importInfo){ vulBijImport(tok,vbos,panden,pandProps,clusterOk,clusterReden); return; }
     // EP-Online: 404 = geen label (dan "Onbekend"); een mislukte aanvraag wordt één keer herhaald en
     // blijft anders leeg, zodat een storing niet stilletjes als "geen label" wordt ingevuld.
     const epHaal=async id=>{ for(let poging=0;poging<2;poging++){ try{ const d=await getJson(`${EP_PROXY_URL}?bagid=${encodeURIComponent(id)}`);
@@ -1456,6 +1457,25 @@ async function vulVvE(locId){
     console.warn('VvE ophalen mislukt',e);
     if(nog()) setVveStatus({soort:'warn',tekst:'De woningen van dit adres konden niet automatisch worden opgehaald. U kunt ze bij stap 3 zelf toevoegen.'});
   }
+}
+
+/* Na het inlezen van een rekentool: woningen uit het bestand houden, maar ze koppelen aan de BAG (WOZ-waarde,
+   woonoppervlakte) en de oppervlakken uit 3D BAG ophalen, zodat de 70%-eis voor dak, vloer en bodem automatisch wordt gecontroleerd. */
+function adresSleutel(straat,nr,toev){ return [straat,nr,toev].map(x=>String(x??'').toLowerCase().replace(/[^a-z0-9]/g,'')).join('|'); }
+function vulBijImport(tok,vbos,panden,pandProps,clusterOk,clusterReden){
+  const bag=new Map(vbos.map(v=>[adresSleutel(v.openbare_ruimte_naam,v.huisnummer,`${v.huisletter||''}${v.toevoeging||''}`),v]));
+  let gekoppeld=0;
+  S.woningen.forEach(w=>{ const v=bag.get(adresSleutel(w.straat,w.nr,w.toev)); if(!v) return; gekoppeld++;
+    if(!w.nummeraanduiding) w.nummeraanduiding=v.hoofdadres_identificatie||''; if(!w.opp) w.opp=num(v.oppervlakte)||null; });
+  S.bron='pdok'; S.autoA=vbos.length; S.panden=panden.length; S.clusterOk=clusterOk; S.opp3d=null; S.bouwjaar=num(pandProps.bouwjaar)||null;
+  save(); updateLive();
+  const n=S.woningen.length;
+  setVveStatus({soort:clusterOk&&gekoppeld===n?'ok':'warn',tekst:`De woningen uit het ingelezen bestand blijven staan. ${gekoppeld} van de ${n} gevonden in de BAG${panden.length>1?` (${panden.length} panden)`:''}; volgens de BAG heeft de VvE ${vbos.length} woning${vbos.length===1?'':'en'}. Dak- en vloeroppervlak worden opgehaald uit 3D BAG voor de 70%-controle.`
+    +(S.bouwjaar>=BOUWJAAR_VOOR?`<br>Let op: volgens de BAG is het gebouw in ${S.bouwjaar} gebouwd; de regeling geldt voor gebouwen van vóór ${BOUWJAAR_VOOR}.`:'')
+    +(clusterOk?'':`<br>${clusterReden}`),
+    bezig:true,wozTekst:'WOZ-waarden (1-1-2023) ophalen ter controle…'});
+  vulWoz(tok);
+  vulOppervlakken(tok,panden);
 }
 
 /* ======= Bestanden ======= */
@@ -1598,21 +1618,25 @@ function bdUitTekst(t){
 }
 /* Maakt van een ingelezen rekentool een nieuwe formulierstatus. De m² per woning blijven staan zoals in het bestand. */
 function vanRekentool(d, bestand){
-  const s={step:STEPS.length-1, maxStep:STEPS.length-1, vve:'', vveAdres:'', A:d.A?String(d.A):'', offerteGebouw:'nee', woningen:[], mt:{}, verdeling:{}, mode:{}, vast:{}};
+  // De m² in het bestand zijn het deel voor de woningen in de aanvraag. Zoals de rekenhulp zelf rekent (offerte voor het
+  // hele gebouw, aandeel B/A) wordt de offerte terugherleid naar het hele gebouw; dan klopt ook de 70%-check met 3D BAG.
+  const inAanvr=d.woningen.filter(r=>String(r.woz).trim().toLowerCase()!=='boven').length, schaal=d.A>0&&inAanvr>0&&inAanvr<=d.A?d.A/inAanvr:0;
+  const s={step:STEPS.length-1, maxStep:STEPS.length-1, vve:'', vveAdres:'', A:d.A?String(d.A):'', offerteGebouw:schaal?'ja':'nee', woningen:[], mt:{}, verdeling:{}, mode:{}, vast:{}};
   const naam=String(bestand||'').replace(/\.xlsx?$/i,'').split('_');
   if(naam.length>=3 && /^\d{8}$/.test(naam[0])) s.vve=naam.slice(1,-1).join('_').trim(); // [datum]_[naam VvE]_Rekentool
   const keuze=(v,opties)=>opties.find(o=>o.toLowerCase()===String(v).trim().toLowerCase())||'';
   d.woningen.forEach(r=>{
     let label=String(r.label).trim().toUpperCase(); label=/^A\+*$/.test(label)?'A':/^[A-G]$/.test(label)?label:label.startsWith('ONB')||label.startsWith('GEEN')?'Onbekend':'';
     const w=newW({straat:r.straat, nr:r.nr, toev:r.toev, plaats:r.plaats, woz:keuze(r.woz,['Onder','Boven']), eig:keuze(r.eig,['eigenaar-bewoner','eigenaar-verhuurder']), label,
-      ...(label==='Onbekend'||!label?bdUitTekst(r.bouwdelen):{}), rij:r.rij});
+      ...(label==='Onbekend'||!label?bdUitTekst(r.bouwdelen):{}), rij:r.rij, uitBestand:{woz:keuze(r.woz,['Onder','Boven'])}});
     s.woningen.push(w);
     s.verdeling[w.id]=Object.fromEntries(M.map(m=>[m.k, r.m[m.k]||0]));
   });
   M.forEach(m=>{
     const tot=d.woningen.filter(r=>keuze(r.woz,['Onder','Boven'])!=='Boven').reduce((t,r)=>t+(r.m[m.k]||0),0);
     if(!(tot>0)) return;
-    s.mt[m.k]={on:true, offerte:m.perWoning?'':String(r2(tot)).replace('.',',')};
+    const g=schaal?tot*schaal:tot, g1=Math.round(g*10)/10; // afrondingsrest van de verdeling niet meenemen
+    s.mt[m.k]={on:true, offerte:m.perWoning?'':String(Math.abs(g1-g)*(schaal?1/schaal:1)<=0.05?g1:r2(g)).replace('.',',')};
     s.vast[m.k]=s.woningen.map(w=>w.id);
     if(m.perWoning) s.mode[m.k]='hand';
   });
@@ -1628,6 +1652,8 @@ function importChecks(){
   M.forEach(m=>{ const f=ii.m2?.[m.k]||0, inv=S.mt[m.k]?.on?r2(m2Totaal(m)):0;
     if(Math.abs(f-inv)>0.05) out.push({s:3,t:`${m.naam}: op het rekenblad staat ${nf.format(f)} ${m.perWoning?'woningen':'m²'}, op het invulblad samen ${nf.format(inv)}.`});
     const tf=ii.tarief?.[m.k]; if(typeof tf==='number' && tf!==m.tarief) out.push({s:3,t:`${m.naam}: in het bestand staat een bedrag van ${eur.format(tf)}, volgens de regeling is het ${eur.format(m.tarief)}.`}); });
+  S.woningen.filter(w=>w.uitBestand?.woz && w.wozWaarde && w.woz!==w.uitBestand.woz).forEach(w=>out.push({s:2,
+    t:`${adres(w)}: in het bestand staat WOZ "${w.uitBestand.woz.toLowerCase()}", maar de WOZ-waarde op 1-1-2023 is ${eur.format(w.wozWaarde).replace(',00','')} (${w.woz==='Boven'?'boven':'onder'} de grens).`}));
   if(typeof ii.totaal==='number' && Math.abs(ii.totaal-totaal())>0.5) out.push({s:4,t:`In het bestand staat een totaal van ${eur.format(ii.totaal)}; opnieuw berekend is het ${eur.format(totaal())}.`});
   return out;
 }
