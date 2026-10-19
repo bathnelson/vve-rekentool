@@ -156,3 +156,17 @@ test('energielabel optioneel met collectieve bouwdelen uit de splitsingsakte', (
   assert.equal(run('labelOptioneel()'), false);
   assert.equal(run('WS().some(woningKlaar)'), false);
 });
+
+test('KvK-nummer is niet verplicht, wel een waarschuwing', () => {
+  const { run } = vve({ kvk: '' });
+  const fouten = () => json(run, 'checks().err.map(e=>e.t)').join('\n');
+  const waarsch = () => json(run, 'checks().warn.map(e=>e.t)').join('\n');
+  assert.doesNotMatch(fouten(), /KvK/);
+  assert.match(waarsch(), /KvK-nummer van de VvE is niet ingevuld/);
+  assert.equal(run('vveOk()'), true);
+  run('S.kvk="1234"');
+  assert.doesNotMatch(fouten(), /KvK/);
+  assert.match(waarsch(), /KvK-nummer 1234 heeft geen 8 cijfers/);
+  run('S.kvk="12345678"');
+  assert.doesNotMatch(waarsch(), /KvK/);
+});

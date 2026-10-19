@@ -56,7 +56,8 @@ test('rondje: wat de rekenhulp uitvoert, leest hij identiek weer in', async () =
   assert.deepEqual(json(run, 'importChecks()'), []);
   // Na het inlezen moet de gebruiker nog de VvE-gegevens en de prestatie-eisen aanvullen.
   const err = json(run, 'checks().err.map(e=>e.t)').join('\n');
-  assert.match(err, /KvK-nummer/);
+  assert.doesNotMatch(err, /KvK-nummer/);
+  assert.match(json(run, 'checks().warn.map(e=>e.t)').join('\n'), /KvK-nummer van de VvE is niet ingevuld/);
   assert.match(err, /bevestig dat de offerte voldoet/);
   assert.doesNotMatch(err, /niet volledig ingevuld/);
 });
@@ -174,4 +175,15 @@ test('na inlezen wordt het adres van de eerste woning opgezocht en het gebouw op
   run('getJson=async()=>({response:{docs:[]}})');
   await run('adresNaImport()');
   assert.match(run('vveStatus.tekst'), /kon niet automatisch worden opgezocht/);
+});
+
+test('naam van de VvE uit de bestandsnaam', () => {
+  const { run } = laad();
+  const naam = n => run(`vveUitBestandsnaam(${JSON.stringify(n)})`);
+  assert.equal(naam('20261019_VvE De Linde_Rekentool.xlsx'), 'VvE De Linde');
+  assert.equal(naam('Rekentool SVVE - VvE Kleverlaan 12 (2).xlsx'), 'VvE Kleverlaan 12');
+  assert.equal(naam('VvE Zijlweg_definitief_v2.xlsx'), 'VvE Zijlweg');
+  assert.equal(naam('2026-05-01 VvE Het Hof rekentool ingevuld.xlsx'), 'VvE Het Hof');
+  assert.equal(naam('C:\\fakepath\\VvE_Oranjeboom.xlsx'), 'VvE Oranjeboom');
+  assert.equal(naam('rekentool.xlsx'), '');
 });
