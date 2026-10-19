@@ -7,6 +7,8 @@ Eén statische pagina (`index.html`), gehost op GitHub Pages: https://bathnelson
   adresverkenner (`adresverkenner.nl/helpers/orvelis.php`) worden alle woningen van de VvE opgehaald,
   met energielabel (EP-Online) en WOZ-waarde op peildatum 1-1-2023.
 - Aan het eind: de officiële rekentool (Excel) ingevuld, plus een overzicht om als PDF op te slaan.
+- Een al ingevulde rekentool (.xlsx) kan worden ingelezen (startpagina): de woningen en m² per woning worden
+  overgenomen en gecontroleerd, met de verschillen tussen rekenblad, invulblad en de tarieven van de regeling.
 - Ingevulde gegevens blijven in de browser van de gebruiker (localStorage); er wordt niets verstuurd.
 
 Het Excel-template zit ingebed in `index.html` (base64), ontdaan van persoons- en SharePoint-metadata.

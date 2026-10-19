@@ -562,6 +562,7 @@ function checks(){
     const verw=deelM2(m), echt=m2Totaal(m);
     if(Math.abs(verw-echt)>0.05) warn.push({s:4,t:`${m.naam}: u heeft ${nf.format(r2(echt))} m² verdeeld, op basis van de offerte is dat ${nf.format(r2(verw))} m². ${echt>verw?'De zelf ingevulde woningen zijn samen al meer dan de offerte.':'Alle woningen zijn zelf ingevuld; pas er één aan of verdeel opnieuw.'}`});
   });
+  importChecks().forEach(x=>warn.push({...x,t:'Ingelezen bestand: '+x.t}));
   if(b>0 && totaal()/b>=MAX_PER_WONING) warn.push({s:4,t:'De gemiddelde subsidie per woning is € 4.000 of meer (VOLDOET NIET op het rekenblad).'});
   return {err,warn};
 }
@@ -661,6 +662,8 @@ function vStart(){
     </ul>
     <p class="muted small">Uw antwoorden worden alleen in deze browser bewaard, zodat u later verder kunt. Er wordt niets verstuurd.</p>
     ${PRE?`<div class="note ok">Deze rekenhulp is al ingevuld met de gegevens van <b>${esc(PRE.naam||PRE.adres||'uw VvE')}</b> uit de adresverkenner (${(PRE.woningen||[]).filter(w=>w.doetMee!==false).length} adressen). Controleer ze in stap 2 en 3 en vul aan wat ontbreekt.</div>`:''}
+    <div class="note info"><b>Heeft u de rekentool al in Excel ingevuld?</b> Lees het bestand in, dan controleren we het op dezelfde regels.
+      <div class="row" style="margin-top:8px"><label class="btn small">Ingevulde rekentool inlezen (.xlsx)<input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" data-act="loadxlsx" hidden></label></div></div>
     ${RESTORED&&heeft?`<div class="note info">U was al eerder begonnen; uw gegevens staan nog klaar. <button class="btn link" data-act="reset">Opnieuw beginnen</button></div>`:''}
     <details><summary>Verder op een andere computer?</summary>
       <p class="small muted" style="margin-top:8px">Sla uw voortgang op als bestand en open het later weer.</p>
@@ -957,6 +960,7 @@ function vControle(){
   const act=actief();
   return `<div class="card">
     <h2>Controle</h2>
+    ${S.importInfo?`<div class="note info small">Ingelezen uit <b>${esc(S.importInfo.bestand||'Excel-bestand')}</b>: ${S.woningen.length} woning${S.woningen.length===1?'':'en'}. De m² per woning zijn overgenomen zoals ze in het bestand stonden. Vul de VvE-gegevens aan en bevestig per maatregel de prestatie-eis; verschillen met het bestand staan bij de aandachtspunten.</div>`:''}
     <div class="kpis">
       <div class="kpi"><div class="k">Totaal subsidie</div><div class="v">${eur.format(t)}</div></div>
       <div class="kpi"><div class="k">Gemiddeld per woning</div><div class="v">${eur.format(gem)}</div></div>
@@ -1225,6 +1229,15 @@ document.addEventListener('change',e=>{
     t.files[0].text().then(txt=>{ const d=JSON.parse(txt); if(!d||!Array.isArray(d.woningen)) throw new Error('ongeldig');
       S=Object.assign(blank(),d); bdMigreer(S); uid=Math.max(0,...S.woningen.map(w=>w.id||0))+1; render(); alert('Voortgang geladen.'); })
     .catch(()=>alert('Dit bestand kon niet worden gelezen.'));
+  }
+  if(t.dataset.act==='loadxlsx' && t.files[0]){
+    const f=t.files[0]; t.value='';
+    if((S.woningen.length||S.vve) && !confirm('Wat u nu heeft ingevuld wordt vervangen door de gegevens uit het bestand. Doorgaan?')) return;
+    f.arrayBuffer().then(buf=>leesRekentool(buf)).then(d=>{
+      if(!d.woningen.length) throw new Error('er staan geen woningen op het invulblad');
+      uid=1; S=vanRekentool(d,f.name); uid=Math.max(0,...S.woningen.map(w=>w.id))+1; save(); render(); window.scrollTo(0,0);
+    }).catch(e=>alert('Dit bestand kon niet worden ingelezen: '+e.message+'.'));
+    return;
   }
   if(t.dataset.wf==='woz'){ const w=S.woningen.find(x=>x.id==t.closest('[data-w]')?.dataset.w); if(w) t.value=w.wozWaarde?nf0.format(w.wozWaarde):''; return; }
   if(t.dataset.vd && !t.closest('tr')) return;
@@ -1520,6 +1533,103 @@ async function makeXlsx(opts={download:true}){
   const blob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
   if(opts.download) download(blob, fname('Rekentool')+'.xlsx');
   return blob;
+}
+/* ======= Ingevulde rekentool (Excel) inlezen ======= */
+function xunesc(s){ return String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&#(\d+);/g,(m,n)=>String.fromCharCode(+n)).replace(/&#x([0-9a-f]+);/gi,(m,n)=>String.fromCharCode(parseInt(n,16))).replace(/&amp;/g,'&'); }
+function xtekst(x){ return xunesc([...String(x).matchAll(/<t(?:\s[^>]*)?>([\s\S]*?)<\/t>/g)].map(m=>m[1]).join('')); }
+/* Alle cellen van een werkblad als {A1: getal of tekst}. Gedeelde teksten (t="s") via sharedStrings. */
+function leesCellen(xml, ss){
+  const out={};
+  for(const m of xml.matchAll(/<c r="([A-Z]+\d+)"([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+    const [,ref,attrs,inner='']=m, t=(attrs.match(/\st="([^"]*)"/)||[])[1], v=(inner.match(/<v>([\s\S]*?)<\/v>/)||[])[1];
+    let val;
+    if(t==='s') val=v!==undefined?ss[+v]:undefined;
+    else if(t==='inlineStr') val=xtekst(inner);
+    else if(t==='str') val=v!==undefined?xunesc(v):undefined;
+    else if(t==='e'||t==='b') val=undefined;
+    else val=v!==undefined&&v!==''?+v:undefined;
+    if(typeof val==='string') val=val.trim();
+    if(val!==undefined&&val!=='') out[ref]=val;
+  }
+  return out;
+}
+/* Leest de officiële rekentool: tabblad 1 (rekenblad) en tabblad 2 (invulblad, rijen 32-157). */
+async function leesRekentool(data){
+  if(typeof JSZip==='undefined') throw new Error('de bibliotheek om Excel te lezen kon niet laden (geen internet?)');
+  let zip; try{ zip=await JSZip.loadAsync(data); }catch(e){ throw new Error('dit is geen Excel-bestand (.xlsx)'); }
+  const lees=async p=>zip.file(p)?zip.file(p).async('string'):'';
+  const wb=await lees('xl/workbook.xml'), rels=await lees('xl/_rels/workbook.xml.rels');
+  const doel=Object.fromEntries([...rels.matchAll(/<Relationship\b[^>]*>/g)].map(m=>[(m[0].match(/\bId="([^"]+)"/)||[])[1],(m[0].match(/\bTarget="([^"]+)"/)||[])[1]]));
+  const bladen=[...wb.matchAll(/<sheet\b[^>]*>/g)].map(m=>({naam:xunesc((m[0].match(/\bname="([^"]*)"/)||[])[1]||''), pad:doel[(m[0].match(/\br:id="([^"]+)"/)||[])[1]]}))
+    .map(b=>({...b, pad:b.pad&&(b.pad.startsWith('/')?b.pad.slice(1):'xl/'+b.pad)}));
+  const blad=re=>bladen.find(b=>re.test(b.naam))?.pad;
+  const p1=blad(/rekenblad/i), p2=blad(/invulblad/i);
+  if(!p1||!p2) throw new Error('de tabbladen "1_Rekenblad" en "2_invulblad" ontbreken; is dit de rekentool van de regeling?');
+  const ss=[...(await lees('xl/sharedStrings.xml')).matchAll(/<si>([\s\S]*?)<\/si>/g)].map(m=>xtekst(m[1]));
+  const c1=leesCellen(await lees(p1),ss), c2=leesCellen(await lees(p2),ss);
+  const colIdx=c=>c.split('').reduce((n,ch)=>n*26+ch.charCodeAt(0)-64,0);
+  const colName=n=>{let s='';while(n>0){const r=(n-1)%26;s=String.fromCharCode(65+r)+s;n=Math.floor((n-1)/26);}return s;};
+  const woningen=[];
+  for(let r=32;r<32+MAX_ROWS;r++){
+    const g=c=>c2[c+r];
+    const m=Object.fromEntries(M.map(x=>[x.k,num(g(x.col))]).filter(([,v])=>v));
+    if(g('A')===undefined&&g('B')===undefined&&!Object.keys(m).length) continue;
+    woningen.push({rij:r, straat:String(g('A')??''), nr:String(g('B')??''), toev:String(g('C')??''), plaats:String(g('D')??''),
+      woz:String(g('E')??''), eig:String(g('F')??''), label:String(g('G')??''), bouwdelen:String(g('H')??''), m,
+      bedrag:typeof g('I')==='number'?g('I'):null});
+  }
+  return {
+    A:num(c1.E19), B:num(c1.E20), C:num(c1.E21), D:num(c1.E22),
+    m2:Object.fromEntries(M.map(x=>[x.k,num(c1['F'+x.row])])),
+    tarief:Object.fromEntries(M.map(x=>[x.k,c1['E'+x.row]])),
+    totaal:typeof c2.I26==='number'?c2.I26:typeof c1.G43==='number'?c1.G43:null,
+    woningen, ecol:Object.fromEntries(M.map(x=>[x.k,colName(colIdx(x.col)+1)])),
+  };
+}
+/* Slechte bouwdelen uit kolom H ("Dak, Gevel / muren") terug naar de keuzes van de rekenhulp. */
+function bdUitTekst(t){
+  const bd=[], anders=[]; let geen=false;
+  String(t||'').split(/[,;\n]+|\s+en\s+/i).map(x=>x.trim()).filter(Boolean).forEach(x=>{
+    const l=x.toLowerCase();
+    const b=l.startsWith('geen')?'geen':/dak/.test(l)?'Dak':/gevel|muur|muren/.test(l)?'Gevel / muren':/vloer|bodem|kruip/.test(l)?'Vloer':/kozijn/.test(l)?'Kozijnen':/glas|raam|ramen/.test(l)?'Glas':/deur/.test(l)?'Deuren':/ventil/.test(l)?'Ventilatie':'';
+    if(b==='geen') geen=true; else if(b){ if(!bd.includes(b)) bd.push(b); } else anders.push(x);
+  });
+  return {bd, bdAnders:anders.join(', '), bdGeen:geen&&!bd.length&&!anders.length};
+}
+/* Maakt van een ingelezen rekentool een nieuwe formulierstatus. De m² per woning blijven staan zoals in het bestand. */
+function vanRekentool(d, bestand){
+  const s={step:STEPS.length-1, maxStep:STEPS.length-1, vve:'', vveAdres:'', A:d.A?String(d.A):'', offerteGebouw:'nee', woningen:[], mt:{}, verdeling:{}, mode:{}, vast:{}};
+  const naam=String(bestand||'').replace(/\.xlsx?$/i,'').split('_');
+  if(naam.length>=3 && /^\d{8}$/.test(naam[0])) s.vve=naam.slice(1,-1).join('_').trim(); // [datum]_[naam VvE]_Rekentool
+  const keuze=(v,opties)=>opties.find(o=>o.toLowerCase()===String(v).trim().toLowerCase())||'';
+  d.woningen.forEach(r=>{
+    let label=String(r.label).trim().toUpperCase(); label=/^A\+*$/.test(label)?'A':/^[A-G]$/.test(label)?label:label.startsWith('ONB')||label.startsWith('GEEN')?'Onbekend':'';
+    const w=newW({straat:r.straat, nr:r.nr, toev:r.toev, plaats:r.plaats, woz:keuze(r.woz,['Onder','Boven']), eig:keuze(r.eig,['eigenaar-bewoner','eigenaar-verhuurder']), label,
+      ...(label==='Onbekend'||!label?bdUitTekst(r.bouwdelen):{}), rij:r.rij});
+    s.woningen.push(w);
+    s.verdeling[w.id]=Object.fromEntries(M.map(m=>[m.k, r.m[m.k]||0]));
+  });
+  M.forEach(m=>{
+    const tot=d.woningen.filter(r=>keuze(r.woz,['Onder','Boven'])!=='Boven').reduce((t,r)=>t+(r.m[m.k]||0),0);
+    if(!(tot>0)) return;
+    s.mt[m.k]={on:true, offerte:m.perWoning?'':String(r2(tot)).replace('.',',')};
+    s.vast[m.k]=s.woningen.map(w=>w.id);
+    if(m.perWoning) s.mode[m.k]='hand';
+  });
+  s.importInfo={bestand:String(bestand||''), A:d.A, B:d.B, C:d.C, D:d.D, m2:d.m2, tarief:d.tarief, totaal:d.totaal};
+  return s;
+}
+/* Verschillen tussen wat in het ingelezen bestand staat en wat de rekenhulp uit de woningen berekent. */
+function importChecks(){
+  const ii=S.importInfo, out=[]; if(!ii) return out;
+  const ws=WS(), cnt=k=>ws.filter(w=>w.eig===k).length;
+  [['B','woningen in de aanvraag',ws.length],['C','eigenaar-bewoners',cnt('eigenaar-bewoner')],['D','eigenaar-verhuurders',cnt('eigenaar-verhuurder')]].forEach(([k,wat,n])=>{
+    if((ii[k]||0)!==n) out.push({s:2,t:`Rekenblad ${k} (${wat}) zegt ${ii[k]||0}, maar op het invulblad staan er ${n}.`}); });
+  M.forEach(m=>{ const f=ii.m2?.[m.k]||0, inv=S.mt[m.k]?.on?r2(m2Totaal(m)):0;
+    if(Math.abs(f-inv)>0.05) out.push({s:3,t:`${m.naam}: op het rekenblad staat ${nf.format(f)} ${m.perWoning?'woningen':'m²'}, op het invulblad samen ${nf.format(inv)}.`});
+    const tf=ii.tarief?.[m.k]; if(typeof tf==='number' && tf!==m.tarief) out.push({s:3,t:`${m.naam}: in het bestand staat een bedrag van ${eur.format(tf)}, volgens de regeling is het ${eur.format(m.tarief)}.`}); });
+  if(typeof ii.totaal==='number' && Math.abs(ii.totaal-totaal())>0.5) out.push({s:4,t:`In het bestand staat een totaal van ${eur.format(ii.totaal)}; opnieuw berekend is het ${eur.format(totaal())}.`});
+  return out;
 }
 function buildReport(){
   syncVerdeling();
