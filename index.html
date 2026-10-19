@@ -358,16 +358,18 @@ const GROUPS = [
   {id:'vent',titel:'Ventilatie',tekst:'Subsidie per woning in plaats van per m².'},
 ];
 const MK = Object.fromEntries(M.map(m=>[m.k,m]));
-const BOUWDELEN = ['Dak','Gevel / muren','Vloer','Kozijnen','Glas','Deuren','Ventilatie'];
+const BOUWDELEN = ['Dak','Gevel / muren','Vloer','Kozijnen','Glas','Panelen','Deuren','Ventilatie'];
 // Vroeger één bouwdeel 'Ramen / glas'; nu kozijnen en glas los (kozijnen kunnen collectief zijn en glas individueel).
 function bdOud(b){ return b==='Ramen / glas'?'Glas':b; }
 function bdMigreer(st){
   (st.woningen||[]).forEach(w=>{ if(w.bd) w.bd=[...new Set(w.bd.map(bdOud))]; });
   if(st.bdGebouw) st.bdGebouw=[...new Set(st.bdGebouw.map(bdOud))];
   const sp=st.splitsing; if(sp&&'Ramen / glas' in sp){ sp.Kozijnen??=sp['Ramen / glas']; sp.Glas??=sp['Ramen / glas']; delete sp['Ramen / glas']; }
+  // Panelen kwamen later los van kozijnen en glas; oude indeling volgt het glas.
+  if(sp&&!('Panelen' in sp)&&sp.Glas) sp.Panelen=sp.Glas;
 }
 // Gemeenschappelijke bouwdelen: bij de eerste keer aanvinken wordt gevraagd of ze voor het hele gebouw gelden.
-const BD_GEBOUW = ['Dak','Gevel / muren','Vloer','Kozijnen'];
+const BD_GEBOUW = ['Dak','Gevel / muren','Vloer','Kozijnen','Panelen'];
 const STEPS = ['Start','Uw VvE','Woningen','Maatregelen','Verdeling','Controle'];
 
 /* ======= Status ======= */
@@ -570,8 +572,8 @@ function checks(){
 }
 // Vanaf 3 woningen: per bouwdeel uit de splitsingsakte collectief ('c', van de VvE) of individueel ('i').
 const SPLITS_VANAF = 3;
-const BD_UITLEG = {'Dak':'Dakvlak en dakbedekking','Gevel / muren':'Buitenmuren en gevels','Vloer':'Begane-grondvloer en bodem/kruipruimte','Kozijnen':'Raam- en deurkozijnen','Glas':'Ruiten en beglazing','Deuren':'Voordeuren en andere buitendeuren','Ventilatie':'Ventilatiesysteem en roosters'};
-const SPLITS_STD = {'Dak':'c','Gevel / muren':'c','Vloer':'c','Kozijnen':'c','Glas':'i','Deuren':'i','Ventilatie':'i'};
+const BD_UITLEG = {'Dak':'Dakvlak en dakbedekking','Gevel / muren':'Buitenmuren en gevels','Vloer':'Begane-grondvloer en bodem/kruipruimte','Kozijnen':'Raam- en deurkozijnen','Glas':'Ruiten en beglazing','Panelen':'Dichte (kozijn)panelen in plaats van glas','Deuren':'Voordeuren en andere buitendeuren','Ventilatie':'Ventilatiesysteem en roosters'};
+const SPLITS_STD = {'Dak':'c','Gevel / muren':'c','Vloer':'c','Kozijnen':'c','Glas':'i','Panelen':'i','Deuren':'i','Ventilatie':'i'};
 function splitsActief(){ return A()>=SPLITS_VANAF; }
 function splitsKlaar(){ return BOUWDELEN.every(b=>['c','i'].includes(S.splitsing?.[b])); }
 function isColl(b){ return S.splitsing?.[b]==='c'; }
@@ -709,7 +711,7 @@ function vSplitsing(){
   return `<div class="card">
     <h2>Bouwdelen volgens de splitsingsakte</h2>
     <p class="intro">In de splitsingsakte (en het splitsingsreglement) staat welke bouwdelen van de VvE zijn en welke van de eigenaar van een appartement. Bij woningen zonder energielabel geeft u straks aan welke bouwdelen slecht geïsoleerd zijn: <b>collectieve</b> één keer voor het hele gebouw, <b>individuele</b> per woning.</p>
-    <div class="row" style="margin-bottom:6px"><button class="btn small" data-act="splitsstd">Veelvoorkomende indeling invullen</button><span class="hint" style="margin:0">dak, gevel, vloer en kozijnen collectief; glas, deuren en ventilatie individueel</span></div>
+    <div class="row" style="margin-bottom:6px"><button class="btn small" data-act="splitsstd">Veelvoorkomende indeling invullen</button><button class="btn small" data-act="splitsalle" data-v="c">Alles collectief</button><button class="btn small" data-act="splitsalle" data-v="i">Alles individueel</button><span class="hint" style="margin:0">veelvoorkomend: dak, gevel, vloer en kozijnen collectief; glas, panelen, deuren en ventilatie individueel</span></div>
     <div class="splits">${BOUWDELEN.map(b=>`<div class="sprow"><span class="nm">${esc(b.split(' /')[0])}<small>${esc(BD_UITLEG[b])}</small></span>
       <div class="seg sp ${tr&&!S.splitsing?.[b]?'err':''}" role="radiogroup" aria-label="${esc(b)}">
         <label><input type="radio" name="sp-${esc(b)}" value="c" data-sp="${esc(b)}" ${S.splitsing?.[b]==='c'?'checked':''}>Collectief (VvE)</label>
@@ -1170,6 +1172,7 @@ document.addEventListener('click',e=>{
   if(act==='clearall'){ if(confirm('Alle adressen verwijderen?')){ S.woningen=[]; S.verdeling={}; render(); } }
   if(act==='filter'){ wFilter=a.dataset.v; render(); }
   if(act==='splitsstd'){ BOUWDELEN.forEach(b=>spZet(b,SPLITS_STD[b])); render(); return; }
+  if(act==='splitsalle'){ BOUWDELEN.forEach(b=>spZet(b,a.dataset.v)); render(); return; }
   if(act==='bdalle'||act==='bdeen'){ const w=S.woningen.find(x=>x.id==a.closest('[data-w]').dataset.w), b=w._vraag; w._vraag=null; (S.bdGevraagd ||= {})[b]=true;
     if(act==='bdalle'){ S.bdGebouw=BD_GEBOUW.filter(x=>x===b||bdGebouw().includes(x)); S.woningen.forEach(x=>{ x.bd=(x.bd||[]).filter(y=>y!==b); }); }
     render(); return; }
@@ -1487,7 +1490,7 @@ async function adresNaImport(){
   try{
     const d=await getJson(`${LOCATIESERVER}/suggest?q=${encodeURIComponent(q)}&fq=type:adres&fq=gemeentenaam:Haarlem&rows=1`);
     const doc=d.response?.docs?.[0]; if(!doc) throw new Error('niet gevonden');
-    S.vveAdres=doc.weergavenaam; save();
+    S.vveAdres=doc.weergavenaam; save(); if(S.step===STEPS.length-1) render();
     await vulVvE(doc.id);
   }catch(e){
     console.warn('Adres na inlezen niet gevonden',e);
@@ -1627,11 +1630,13 @@ async function leesRekentool(data){
 /* Slechte bouwdelen uit kolom H terug naar de keuzes van de rekenhulp. Ruim: mensen schrijven "dak + panelen in kozijn",
    "enkel glas en voordeur", "Dak, Gevel / muren". Per stukje tekst worden alle herkende bouwdelen genomen. */
 const BD_WOORDEN=[[/dak|zolder|vliering/,'Dak'],[/gevel|muur|muren|spouw/,'Gevel / muren'],[/vloer|bodem|kruip/,'Vloer'],
-  [/kozijn|panee?l/,'Kozijnen'],[/glas|raam|ramen|ruit|beglazing/,'Glas'],[/deur/,'Deuren'],[/ventil|luchtafvoer|wtw/,'Ventilatie']];
+  [/panee?l/,'Panelen'],[/kozijn/,'Kozijnen'],[/glas|raam|ramen|ruit|beglazing/,'Glas'],[/deur/,'Deuren'],[/ventil|luchtafvoer|wtw/,'Ventilatie']];
 function bdUitTekst(t){
   const bd=[], anders=[]; let geen=false;
   String(t||'').split(/[,;\n+&/|]+|\s+(?:en|and|plus)\s+/i).map(x=>x.trim()).filter(Boolean).forEach(x=>{
-    const l=x.toLowerCase(), hier=BD_WOORDEN.filter(([re])=>re.test(l)).map(([,b])=>b);
+    const l=x.toLowerCase(); let hier=BD_WOORDEN.filter(([re])=>re.test(l)).map(([,b])=>b);
+    // "panelen in kozijn" en "kozijnpanelen" gaan over de panelen, niet over de kozijnen zelf.
+    if(hier.includes('Panelen')) hier=hier.filter(b=>b!=='Kozijnen');
     if(hier.length) hier.forEach(b=>{ if(!bd.includes(b)) bd.push(b); });
     else if(/^geen\b/.test(l)) geen=true;
     else if(!/^(en|of|slecht[e]?|matig[e]?|oud[e]?|niet( ge[iï]soleerd)?|onge[iï]soleerd|isolatie|enz\.?|etc\.?|-)$/.test(l)) anders.push(x);
