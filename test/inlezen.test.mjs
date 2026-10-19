@@ -208,9 +208,10 @@ test('naam van de VvE uit de bestandsnaam', () => {
 test('slechte bouwdelen worden ruim herkend', () => {
   const { run } = laad();
   const bd = t => json(run, `bdUitTekst(${JSON.stringify(t)})`);
-  assert.deepEqual(bd('dak + panelen in kozijn'), { bd: ['Dak', 'Kozijnen'], bdAnders: '', bdGeen: false });
+  assert.deepEqual(bd('dak + panelen in kozijn'), { bd: ['Dak', 'Panelen'], bdAnders: '', bdGeen: false });
   assert.deepEqual(bd('enkel glas en voordeur').bd, ['Glas', 'Deuren']);
-  assert.deepEqual(bd('slechte kozijnpanelen & HR glas').bd, ['Kozijnen', 'Glas']);
+  assert.deepEqual(bd('slechte kozijnpanelen & HR glas').bd, ['Panelen', 'Glas']);
+  assert.deepEqual(bd('houten kozijnen, enkel glas').bd, ['Kozijnen', 'Glas']);
   assert.deepEqual(bd('kruipruimte; mechanische ventilatie').bd, ['Vloer', 'Ventilatie']);
   assert.deepEqual(bd('Dak, Gevel / muren').bd, ['Dak', 'Gevel / muren']);
   assert.deepEqual(bd('Schuur'), { bd: [], bdAnders: 'Schuur', bdGeen: false });
@@ -224,11 +225,11 @@ const bestand = (A, rijen) => ({ A, B: rijen.length, C: rijen.length, D: 0, m2: 
 
 test('zelfde slechte bouwdelen bij alle woningen zonder label: op gebouwniveau', () => {
   const { run } = laad();
-  run(`S=vanRekentool(${JSON.stringify(bestand(2, [rij(0), rij(1, { bouwdelen: 'Dak en kozijnen' })]))},"x.xlsx")`);
-  assert.deepEqual(json(run, 'S.bdGebouw'), ['Dak', 'Kozijnen']);
-  assert.deepEqual(json(run, 'bdGebouw()'), ['Dak', 'Kozijnen']);
+  run(`S=vanRekentool(${JSON.stringify(bestand(2, [rij(0), rij(1, { bouwdelen: 'Dak en panelen' })]))},"x.xlsx")`);
+  assert.deepEqual(json(run, 'S.bdGebouw'), ['Dak', 'Panelen']);
+  assert.deepEqual(json(run, 'bdGebouw()'), ['Dak', 'Panelen']);
   assert.equal(run('labelOptioneel()'), true);
-  assert.deepEqual(json(run, 'S.woningen.map(bouwdelen)'), [['Dak', 'Kozijnen'], ['Dak', 'Kozijnen']]);
+  assert.deepEqual(json(run, 'S.woningen.map(bouwdelen)'), [['Dak', 'Panelen'], ['Dak', 'Panelen']]);
   assert.equal(run('S.woningen.every(woningKlaar)'), true);
 });
 
@@ -238,7 +239,24 @@ test('alleen wat bij alle woningen terugkomt gaat naar gebouwniveau', () => {
   assert.deepEqual(json(run, 'S.bdGebouw'), ['Dak']);
   // Vanaf 3 woningen telt het gebouwniveau pas mee als de splitsingsakte zegt dat het dak collectief is.
   assert.deepEqual(json(run, 'bdGebouw()'), []);
-  assert.deepEqual(json(run, 'S.woningen.map(bouwdelen)'), [['Dak', 'Kozijnen'], ['Dak', 'Glas'], []]);
+  assert.deepEqual(json(run, 'S.woningen.map(bouwdelen)'), [['Dak', 'Panelen'], ['Dak', 'Glas'], []]);
   run('S.splitsing={...SPLITS_STD}');
   assert.deepEqual(json(run, 'bdGebouw()'), ['Dak']);
+});
+
+test('splitsingsakte: knoppen alles collectief en alles individueel', () => {
+  const { window, run } = laad();
+  run('S.A="4"; S.step=1; S.sub=1; render()');
+  const knop = v => window.document.querySelector(`[data-act=splitsalle][data-v="${v}"]`);
+  assert.ok(knop('c') && knop('i'));
+  knop('c').click();
+  assert.equal(run('BOUWDELEN.every(b=>S.splitsing[b]==="c")'), true);
+  knop('i').click();
+  assert.equal(run('BOUWDELEN.every(b=>S.splitsing[b]==="i")'), true);
+});
+
+test('oude splitsing zonder panelen: panelen volgen het glas', () => {
+  const { run } = laad();
+  run('var st={splitsing:{Dak:"c","Gevel / muren":"c",Vloer:"c",Kozijnen:"c",Glas:"i",Deuren:"i",Ventilatie:"i"}}; bdMigreer(st)');
+  assert.equal(run('st.splitsing.Panelen'), 'i');
 });
