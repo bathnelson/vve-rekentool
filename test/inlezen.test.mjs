@@ -158,3 +158,20 @@ test('adres kiezen na inlezen: woningen blijven, koppeling met de BAG en WOZ-con
   run('const w=S.woningen[1]; w.wozWaarde=650000; w.woz=wozUit(650000)');
   assert.match(json(run, 'importChecks().map(x=>x.t)').join('\n'), /Teststraat 2 A: in het bestand staat WOZ "onder", maar de WOZ-waarde op 1-1-2023 is €\s650\.000 \(boven de grens\)/);
 });
+
+test('na inlezen wordt het adres van de eerste woning opgezocht en het gebouw opgehaald', async () => {
+  const buf = await maakBestand({ woningen: woningen(2, i => ({ toevoeging: i ? '' : 'Z', wozWaarde: i ? 300000 : 900000 })), maatregelen: { dak: '40' } });
+  const ctx = await leesIn(buf);
+  const { run, window } = ctx;
+  window.__urls = [];
+  run(`getJson=async url=>{ __urls.push(url); return {response:{docs:[{id:'adr-1',weergavenaam:'Teststraat 2, 2011AA Haarlem'}]}}; };
+       vulVvE=async id=>{ window.__id=id; };`);
+  await run('adresNaImport()');
+  // De eerste woning in de aanvraag (Teststraat 1 Z zit boven de WOZ-grens).
+  assert.match(decodeURIComponent(window.__urls[0]), /q=Teststraat 2 Haarlem&fq=type:adres/);
+  assert.equal(window.__id, 'adr-1');
+  assert.equal(run('S.vveAdres'), 'Teststraat 2, 2011AA Haarlem');
+  run('getJson=async()=>({response:{docs:[]}})');
+  await run('adresNaImport()');
+  assert.match(run('vveStatus.tekst'), /kon niet automatisch worden opgezocht/);
+});

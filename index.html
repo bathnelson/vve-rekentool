@@ -960,7 +960,7 @@ function vControle(){
   const act=actief();
   return `<div class="card">
     <h2>Controle</h2>
-    ${S.importInfo?`<div class="note info small">Ingelezen uit <b>${esc(S.importInfo.bestand||'Excel-bestand')}</b>: ${S.woningen.length} woning${S.woningen.length===1?'':'en'}. De m² per woning zijn overgenomen zoals ze in het bestand stonden. Vul bij stap 2 de VvE-gegevens aan. Kiest u daar het adres, dan worden ook de WOZ-waarden en het dak- en vloeroppervlak (3D BAG) opgehaald, zodat de 70%-eis automatisch wordt gecontroleerd. Verschillen met het bestand staan bij de aandachtspunten.</div>`:''}
+    ${S.importInfo?`<div class="note info small">Ingelezen uit <b>${esc(S.importInfo.bestand||'Excel-bestand')}</b>: ${S.woningen.length} woning${S.woningen.length===1?'':'en'}. De m² per woning zijn overgenomen zoals ze in het bestand stonden. Het adres van de VvE is dat van de eerste woning${S.vve?' en de naam komt uit de bestandsnaam':''}; pas ze zo nodig aan bij stap 2. WOZ-waarden en dak- en vloeroppervlak (3D BAG) worden opgehaald, zodat ook de 70%-eis automatisch wordt gecontroleerd. Verschillen met het bestand staan bij de aandachtspunten.</div><div id="vvestatus">${vveStatusHtml()}</div>`:''}
     <div class="kpis">
       <div class="kpi"><div class="k">Totaal subsidie</div><div class="v">${eur.format(t)}</div></div>
       <div class="kpi"><div class="k">Gemiddeld per woning</div><div class="v">${eur.format(gem)}</div></div>
@@ -1235,7 +1235,7 @@ document.addEventListener('change',e=>{
     if((S.woningen.length||S.vve) && !confirm('Wat u nu heeft ingevuld wordt vervangen door de gegevens uit het bestand. Doorgaan?')) return;
     f.arrayBuffer().then(buf=>leesRekentool(buf)).then(d=>{
       if(!d.woningen.length) throw new Error('er staan geen woningen op het invulblad');
-      uid=1; S=vanRekentool(d,f.name); uid=Math.max(0,...S.woningen.map(w=>w.id))+1; save(); render(); window.scrollTo(0,0);
+      uid=1; S=vanRekentool(d,f.name); uid=Math.max(0,...S.woningen.map(w=>w.id))+1; save(); render(); window.scrollTo(0,0); adresNaImport();
     }).catch(e=>alert('Dit bestand kon niet worden ingelezen: '+e.message+'.'));
     return;
   }
@@ -1455,7 +1455,7 @@ async function vulVvE(locId){
     vulOppervlakken(tok,panden);
   }catch(e){
     console.warn('VvE ophalen mislukt',e);
-    if(nog()) setVveStatus({soort:'warn',tekst:'De woningen van dit adres konden niet automatisch worden opgehaald. U kunt ze bij stap 3 zelf toevoegen.'});
+    if(nog()) setVveStatus({soort:'warn',tekst:S.importInfo?'De gegevens van dit gebouw konden niet automatisch worden opgehaald. De woningen uit het bestand blijven staan; bevestig de 70%-eis dan zelf bij stap 4.':'De woningen van dit adres konden niet automatisch worden opgehaald. U kunt ze bij stap 3 zelf toevoegen.'});
   }
 }
 
@@ -1474,8 +1474,22 @@ function vulBijImport(tok,vbos,panden,pandProps,clusterOk,clusterReden){
     +(S.bouwjaar>=BOUWJAAR_VOOR?`<br>Let op: volgens de BAG is het gebouw in ${S.bouwjaar} gebouwd; de regeling geldt voor gebouwen van vóór ${BOUWJAAR_VOOR}.`:'')
     +(clusterOk?'':`<br>${clusterReden}`),
     bezig:true,wozTekst:'WOZ-waarden (1-1-2023) ophalen ter controle…'});
-  vulWoz(tok);
-  vulOppervlakken(tok,panden);
+  Promise.all([vulWoz(tok),vulOppervlakken(tok,panden)]).then(()=>{ if(tok===vulToken && S.step===STEPS.length-1) render(); });
+}
+/* Direct na het inlezen: het adres van de eerste woning als adres van de VvE nemen en de gebouwgegevens ophalen. */
+async function adresNaImport(){
+  const w=WS().find(x=>x.straat&&x.nr)||S.woningen.find(x=>x.straat&&x.nr); if(!w) return;
+  const q=[w.straat,w.nr+(w.toev?' '+w.toev:''),w.plaats||'Haarlem'].join(' ');
+  setVveStatus({bezig:true,tekst:`Adres van de VvE opzoeken (${esc(adres(w))})…`});
+  try{
+    const d=await getJson(`${LOCATIESERVER}/suggest?q=${encodeURIComponent(q)}&fq=type:adres&fq=gemeentenaam:Haarlem&rows=1`);
+    const doc=d.response?.docs?.[0]; if(!doc) throw new Error('niet gevonden');
+    S.vveAdres=doc.weergavenaam; save();
+    await vulVvE(doc.id);
+  }catch(e){
+    console.warn('Adres na inlezen niet gevonden',e);
+    setVveStatus({soort:'warn',tekst:`Het adres ${esc(adres(w))} kon niet automatisch worden opgezocht. Kies bij stap 2 het adres van de VvE, dan worden WOZ-waarden en dak- en vloeroppervlak alsnog opgehaald.`});
+  }
 }
 
 /* ======= Bestanden ======= */
