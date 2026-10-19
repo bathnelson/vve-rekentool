@@ -187,3 +187,41 @@ test('naam van de VvE uit de bestandsnaam', () => {
   assert.equal(naam('C:\\fakepath\\VvE_Oranjeboom.xlsx'), 'VvE Oranjeboom');
   assert.equal(naam('rekentool.xlsx'), '');
 });
+
+test('slechte bouwdelen worden ruim herkend', () => {
+  const { run } = laad();
+  const bd = t => json(run, `bdUitTekst(${JSON.stringify(t)})`);
+  assert.deepEqual(bd('dak + panelen in kozijn'), { bd: ['Dak', 'Kozijnen'], bdAnders: '', bdGeen: false });
+  assert.deepEqual(bd('enkel glas en voordeur').bd, ['Glas', 'Deuren']);
+  assert.deepEqual(bd('slechte kozijnpanelen & HR glas').bd, ['Kozijnen', 'Glas']);
+  assert.deepEqual(bd('kruipruimte; mechanische ventilatie').bd, ['Vloer', 'Ventilatie']);
+  assert.deepEqual(bd('Dak, Gevel / muren').bd, ['Dak', 'Gevel / muren']);
+  assert.deepEqual(bd('Schuur'), { bd: [], bdAnders: 'Schuur', bdGeen: false });
+  assert.equal(bd('geen (goed geïsoleerd)').bdGeen, true);
+});
+
+function rij(i, extra) {
+  return { rij: 32 + i, straat: 'Narcisstraat', nr: String(i + 1), toev: '', plaats: 'Haarlem', woz: 'Onder', eig: 'eigenaar-bewoner', label: 'Onbekend', bouwdelen: 'dak + panelen in kozijn', m: { J: 10 }, ...extra };
+}
+const bestand = (A, rijen) => ({ A, B: rijen.length, C: rijen.length, D: 0, m2: {}, tarief: {}, totaal: null, woningen: rijen });
+
+test('zelfde slechte bouwdelen bij alle woningen zonder label: op gebouwniveau', () => {
+  const { run } = laad();
+  run(`S=vanRekentool(${JSON.stringify(bestand(2, [rij(0), rij(1, { bouwdelen: 'Dak en kozijnen' })]))},"x.xlsx")`);
+  assert.deepEqual(json(run, 'S.bdGebouw'), ['Dak', 'Kozijnen']);
+  assert.deepEqual(json(run, 'bdGebouw()'), ['Dak', 'Kozijnen']);
+  assert.equal(run('labelOptioneel()'), true);
+  assert.deepEqual(json(run, 'S.woningen.map(bouwdelen)'), [['Dak', 'Kozijnen'], ['Dak', 'Kozijnen']]);
+  assert.equal(run('S.woningen.every(woningKlaar)'), true);
+});
+
+test('alleen wat bij alle woningen terugkomt gaat naar gebouwniveau', () => {
+  const { run } = laad();
+  run(`S=vanRekentool(${JSON.stringify(bestand(3, [rij(0), rij(1, { bouwdelen: 'dak, glas' }), rij(2, { label: 'E', bouwdelen: '' })]))},"x.xlsx")`);
+  assert.deepEqual(json(run, 'S.bdGebouw'), ['Dak']);
+  // Vanaf 3 woningen telt het gebouwniveau pas mee als de splitsingsakte zegt dat het dak collectief is.
+  assert.deepEqual(json(run, 'bdGebouw()'), []);
+  assert.deepEqual(json(run, 'S.woningen.map(bouwdelen)'), [['Dak', 'Kozijnen'], ['Dak', 'Glas'], []]);
+  run('S.splitsing={...SPLITS_STD}');
+  assert.deepEqual(json(run, 'bdGebouw()'), ['Dak']);
+});
