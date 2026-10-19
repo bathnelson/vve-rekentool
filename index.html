@@ -528,8 +528,8 @@ function checks(){
   S.woningen.forEach(w=>{
     if(!w.straat||!w.nr||!w.plaats||!wozBekend(w)) onvolledig++;
     else if(!inAanvraag(w)) return;
-    else if(!w.eig||!w.label) onvolledig++;
-    else if(w.label==='Onbekend' && !bdGeen(w) && bouwdelen(w).length<2) bd++;
+    else if(!w.eig||!lbl(w)) onvolledig++;
+    else if(lbl(w)==='Onbekend' && !bdGeen(w) && bouwdelen(w).length<2) bd++;
   });
   if(onvolledig) err.push({s:2,t:`${onvolledig} woning(en) zijn nog niet volledig ingevuld (adres, WOZ-waarde, eigenaar of energielabel).`});
   if(bd) err.push({s:2,t:`${bd} woning(en) met onbekend energielabel hebben nog geen 2 slechte bouwdelen.`});
@@ -554,7 +554,7 @@ function checks(){
   Object.keys(OPP3D).forEach(k=>{ const t=S.mt[k], tot=S.opp3d?.[k]; if(t?.on&&tot&&oppPct(k)>100) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan ${OPP3D[k].wat} volgens 3D BAG (${nf.format(tot)} m²). Controleer de offerte.`}); });
   Object.keys(MAX3D).forEach(k=>{ const t=S.mt[k], max=S.opp3d?.[k]; if(t?.on&&max&&num(t.offerte)>max) warn.push({s:3,t:`${MK[k].naam}: ${nf.format(num(t.offerte))} m² is meer dan alle buitenmuren samen volgens 3D BAG (${nf.format(max)} m²). Controleer de offerte.`}); });
   if(nGeen) warn.push({s:2,t:`${nGeen} woning${nGeen===1?' heeft':'en hebben'} een WOZ-waarde van ${eur.format(WOZ_GRENS).replace(',00','')} of hoger en ${nGeen===1?'telt':'tellen'} niet mee in de aanvraag.`});
-  const geenSlecht=WS().filter(w=>w.label==='Onbekend'&&bdGeen(w)).length;
+  const geenSlecht=WS().filter(w=>lbl(w)==='Onbekend'&&bdGeen(w)).length;
   if(geenSlecht) warn.push({s:2,t:`${geenSlecht} woning(en) zonder energielabel zijn opgegeven als goed geïsoleerd. Op de rekentool wordt bij een onbekend label een opsomming van minimaal 2 slechte bouwdelen gevraagd. Controleer of deze woningen mee kunnen doen.`});
   const goed=WS().filter(w=>['A','B','C'].includes(w.label));
   if(goed.length) warn.push({s:2,t:`${goed.length} woning(en) hebben energielabel A, B of C. Op de rekentool staat "evt. aanwezig (slecht) energielabel (D t/m G)". Controleer of deze woningen mee kunnen doen.`});
@@ -579,7 +579,11 @@ function bdGeen(w){ return !!w.bdGeen && !bdGebouw().length; }
 function bouwdelen(w){ const g=bdGebouw(); if(bdGeen(w)) return ['Geen (goed geïsoleerd)']; return [...g, ...(w.bd||[]).filter(b=>!g.includes(b)&&bdPerWoning().includes(b)), ...(w.bdAnders?[w.bdAnders]:[])].filter(Boolean); }
 // Labels uit EP-Online of de adresverkenner: dan geen "energielabel voor alle woningen" aanbieden.
 function labelsOpgehaald(){ return S.woningen.some(w=>w.auto?.labelBron&&w.auto.labelBron!=='ophalen mislukt') || !!PRE?.woningen?.some(w=>w.energielabel); }
-function zonderLabel(){ return WS().filter(w=>w.label==='Onbekend'); }
+// Met minimaal 2 slechte bouwdelen voor het hele gebouw voldoet elke woning al; het energielabel hoeft dan niet.
+// Een leeg label telt dan als "geen label" (op de rekentool: label Onbekend plus de slechte bouwdelen).
+function labelOptioneel(){ return bdGebouw().length>=2; }
+function lbl(w){ return w.label || (labelOptioneel()?'Onbekend':''); }
+function zonderLabel(){ return WS().filter(w=>lbl(w)==='Onbekend'); }
 // Bouwdeel van collectief naar individueel: wat voor het gebouw was aangevinkt, blijft per woning staan.
 function spZet(b,v){
   if(S.splitsing?.[b]==='c' && v==='i' && (S.bdGebouw||[]).includes(b)){ S.bdGebouw=S.bdGebouw.filter(x=>x!==b); zonderLabel().forEach(w=>{ if(!(w.bd||[]).includes(b)) (w.bd ||= []).push(b); }); }
@@ -599,6 +603,7 @@ function markeerLeeg(){
     let leeg = el.type==='checkbox' ? !el.checked : !String(el.value).trim();
     if(el.dataset.f==='A') leeg=!(num(el.value)>0);
     if(el.dataset.f==='kvk') leeg=!kvkOk();
+    if(el.dataset.wf==='label' && labelOptioneel()) leeg=false;
     if(el.dataset.wf==='woz'){ const w=S.woningen.find(x=>x.id==el.closest('[data-w]')?.dataset.w); leeg=!(w&&wozBekend(w)); }
     if(el.dataset.mf==='offerte') leeg=!(num(el.value)>0);
     if(el.dataset.c==='email') leeg=!MAIL_RE.test(el.value);
@@ -711,7 +716,7 @@ function vSplitsing(){
   </div>`;
 }
 let wFilter='alle';
-function woningKlaar(w){ return !!(w.straat&&w.nr&&w.plaats&&wozBekend(w)) && (!inAanvraag(w) || (!!(w.eig&&w.label) && (w.label!=='Onbekend'||bdGeen(w)||bouwdelen(w).length>=2))); }
+function woningKlaar(w){ return !!(w.straat&&w.nr&&w.plaats&&wozBekend(w)) && (!inAanvraag(w) || (!!(w.eig&&lbl(w)) && (lbl(w)!=='Onbekend'||bdGeen(w)||bouwdelen(w).length>=2))); }
 function wKop(){
   const n=S.woningen.length, b=B(), a=A(), geen=n-b;
   const auto=S.clusterOk&&S.bron==='pdok'&&n>0;
@@ -741,19 +746,19 @@ function vWoningen(){
       ${labelsOpgehaald()?'':sel('all-label','',['','D','E','F','G','Onbekend'],['Energielabel…','D','E','F','G','Geen / onbekend'],'aria-label="Energielabel voor alle woningen"')}
     </div>
     ${splitsActief()
-      ?(zonderLabel().length&&BOUWDELEN.some(isColl)?`<div class="bd bdgeb" role="group" aria-label="Slecht geïsoleerde collectieve bouwdelen"><span class="lbl">Slecht geïsoleerd, collectief (hele gebouw):</span>
+      ?(WS().some(w=>!w.label||w.label==='Onbekend')&&BOUWDELEN.some(isColl)?`<div class="bd bdgeb" role="group" aria-label="Slecht geïsoleerde collectieve bouwdelen"><span class="lbl">Slecht geïsoleerd, collectief (hele gebouw):</span>
         ${BOUWDELEN.filter(isColl).map(b=>`<label><input type="checkbox" data-bdg="${esc(b)}" ${bdGebouw().includes(b)?'checked':''}>${esc(b.split(' /')[0])}</label>`).join('')}
-        <span class="hint">Collectief volgens de splitsingsakte; telt mee voor elke woning zonder energielabel. Individuele bouwdelen kiest u per woning. <button class="btn link small" data-go="1" data-sub="1">Indeling aanpassen</button></span></div>`:'')
+        <span class="hint">Collectief volgens de splitsingsakte; telt mee voor elke woning zonder energielabel. Individuele bouwdelen kiest u per woning. Kiest u er hier minimaal 2, dan hoeft het energielabel niet te worden ingevuld. <button class="btn link small" data-go="1" data-sub="1">Indeling aanpassen</button></span></div>`:'')
       :(bdGebouw().length?`<div class="bd bdgeb" role="group" aria-label="Slecht geïsoleerde bouwdelen van het hele gebouw"><span class="lbl">Slecht geïsoleerd, hele gebouw:</span>
         ${BD_GEBOUW.map(b=>`<label><input type="checkbox" data-bdg="${esc(b)}" ${bdGebouw().includes(b)?'checked':''}>${esc(b.split(' /')[0])}</label>`).join('')}
-        <span class="hint">Telt mee voor elke woning zonder energielabel (gemarkeerd met "alle").</span></div>`:'')}
+        <span class="hint">Telt mee voor elke woning zonder energielabel (gemarkeerd met "alle"). Met minimaal 2 bouwdelen hier hoeft het energielabel niet te worden ingevuld.</span></div>`:'')}
     <div class="wlist" id="wlist">${lijst.map(w=>wCard(w)).join('')}</div>
     <div class="row" style="margin-top:12px"><button class="btn small" data-act="addone">+ Woning toevoegen</button>
     <button class="btn small ghost" data-act="clearall">Alle woningen verwijderen</button></div>
     <details class="small"><summary>Uitleg bij deze vragen</summary>
       <p style="margin-top:8px"><b>WOZ-waarde:</b> de waarde op peildatum 1 januari 2023 (WOZ 2024). Alleen woningen onder de gemiddelde WOZ-waarde van koopwoningen in Haarlem (${grens}) komen in aanmerking. Opgehaalde waarden zijn al ingevuld; zelf opzoeken kan op <a href="https://www.wozwaardeloket.nl" target="_blank" rel="noopener">wozwaardeloket.nl</a>.</p>
       <p><b>Eigenaar-bewoner</b> woont zelf in de woning. <b>Eigenaar-verhuurder</b> verhuurt de woning.</p>
-      <p><b>Energielabel:</b> D t/m G. Geen label? Kies "Geen / onbekend" en geef minimaal 2 slechte bouwdelen op. Vinkt u dak, gevel of vloer voor het eerst aan, dan vragen we of dat voor alle woningen geldt; dan hoeft u het maar één keer te doen. Zonder slechte bouwdelen voor het hele gebouw kunt u per woning ook "Geen" kiezen als de woning goed geïsoleerd is.</p>
+      <p><b>Energielabel:</b> D t/m G. Geen label? Kies "Geen / onbekend" en geef minimaal 2 slechte bouwdelen op. Vinkt u dak, gevel of vloer voor het eerst aan, dan vragen we of dat voor alle woningen geldt; dan hoeft u het maar één keer te doen. Zonder slechte bouwdelen voor het hele gebouw kunt u per woning ook "Geen" kiezen als de woning goed geïsoleerd is. Staan er minimaal 2 slechte bouwdelen voor het hele gebouw, dan hoeft u het energielabel niet in te vullen.</p>
     </details>`:''}
   </div>`;
 }
@@ -782,7 +787,7 @@ function wozVeld(w,t){
 function wStatus(w){ const k=woningKlaar(w); return !inAanvraag(w)?['uit','–','geen subsidie']:k?['ok','✓','compleet']:['todo','•','nog aanvullen']; }
 function wCard(w){
   const t=S._try2;
-  const e=f=>t&&!w[f]?'err':'';
+  const e=f=>t&&!(f==='label'?lbl(w):w[f])?'err':'';
   const bdn=bouwdelen(w).length, g=bdGebouw(), geen=bdGeen(w);
   const [stK,stI,stT]=wStatus(w);
   const toonAdres=w._edit||!w.straat||!w.nr||!w.plaats;
@@ -800,7 +805,7 @@ function wCard(w){
         </div>
         <div class="geenmsg">Geen subsidie: WOZ ${eur.format(WOZ_GRENS).replace(',00','')} of hoger</div>
       </div>
-        <select data-wf="label" class="lbl ${lbKlasse(w.label)} ${e('label')}" aria-label="Energielabel ${esc(adres(w))}">${lbs.map(v=>`<option value="${v}" ${v===w.label?'selected':''}>${!v?(smal?'Label':'Label…'):v==='Onbekend'?(smal?'Geen':'Geen label'):(smal?v:'Label '+v)}</option>`).join('')}</select>
+        <select data-wf="label" class="lbl ${lbKlasse(w.label)} ${e('label')}" aria-label="Energielabel ${esc(adres(w))}">${lbs.map(v=>`<option value="${v}" ${v===w.label?'selected':''}>${!v?(labelOptioneel()?(smal?'Label':'Label (hoeft niet)'):(smal?'Label':'Label…')):v==='Onbekend'?(smal?'Geen':'Geen label'):(smal?v:'Label '+v)}</option>`).join('')}</select>
       <div class="meer"><button class="ib" data-act="editw" title="${w._edit?'Klaar met aanpassen':'Adres aanpassen'}" aria-label="${w._edit?'Klaar met aanpassen':'Adres aanpassen'} ${esc(adres(w))}">${w._edit?'✓':'✎'}</button><button class="ib del" data-act="del" title="Verwijderen" aria-label="Verwijder ${esc(adres(w))}">✕</button></div>
     </div>
     ${toonAdres?`<div class="addr">
@@ -809,7 +814,7 @@ function wCard(w){
       <label><span class="mini">Toevoeging</span><input type="text" data-wf="toev" value="${esc(w.toev)}"></label>
       <label><span class="mini">Woonplaats</span><input type="text" data-wf="plaats" value="${esc(w.plaats)}" class="${e('plaats')}"></label>
     </div>`:''}
-    ${w.label==='Onbekend'?`<div class="bd" role="group" aria-label="Slecht geïsoleerde bouwdelen ${esc(adres(w))}"><span class="lbl">Slecht geïsoleerd (min. 2):</span>
+    ${lbl(w)==='Onbekend'?`<div class="bd" role="group" aria-label="Slecht geïsoleerde bouwdelen ${esc(adres(w))}"><span class="lbl">Slecht geïsoleerd (min. 2):</span>
       ${splitsActief()&&g.length?`<span class="gbchip" title="Collectief volgens de splitsingsakte, ingesteld boven de lijst">VvE: ${g.map(b=>esc(b.split(' /')[0])).join(', ')}</span>`:''}
       ${bdPerWoning().map(b=>g.includes(b)
         ?`<label class="gb" title="Geldt voor alle woningen zonder energielabel. Uitzetten = niet voor deze woning."><input type="checkbox" data-bd="${esc(b)}" checked>${esc(b.split(' /')[0])}</label>`
@@ -1018,7 +1023,7 @@ function bronnen(){
   r.push({wat:`WOZ-waarde (grens ${eur.format(WOZ_GRENS).replace(',00','')})`, waarde:`${alle.length-geen} onder, ${geen} boven grens`, bron:`WOZ-waardeloket, peildatum 1-1-2023 (${metWoz} van ${alle.length} opgehaald)`, let:[mWoz?`${mWoz} zelf aangepast`:'', alle.length-metWoz?`${alle.length-metWoz} zelf ingevuld`:''].filter(Boolean).join(', ')});
   if(splitsActief()&&S.splitsing) r.push({wat:'Splitsingsakte: collectief', waarde:BOUWDELEN.filter(isColl).join(', ')||'geen', bron:'zelf ingevuld', let:''},
     {wat:'Splitsingsakte: individueel', waarde:BOUWDELEN.filter(b=>S.splitsing[b]==='i').join(', ')||'geen', bron:'zelf ingevuld', let:''});
-  if(ws.some(w=>w.label==='Onbekend')) r.push({wat:'Slechte bouwdelen gebouw', waarde:bdGebouw().join(', ')||'geen', bron:'zelf ingevuld (geldt voor woningen zonder label)', let:''});
+  if(ws.some(w=>lbl(w)==='Onbekend')) r.push({wat:'Slechte bouwdelen gebouw', waarde:bdGebouw().join(', ')||'geen', bron:'zelf ingevuld (geldt voor woningen zonder label)', let:''});
   r.push({wat:'Eigenaar-bewoner / verhuurder', waarde:`${n(w=>w.eig==='eigenaar-bewoner')} / ${n(w=>w.eig==='eigenaar-verhuurder')}`, bron:'zelf ingevuld', let:''});
   actief().forEach(m=>{
     const t=S.mt[m.k], o=S.opp3d?.[m.k];
@@ -1079,9 +1084,9 @@ function aanvraagData(){
     totaalSubsidie:r2(t), gemiddeldPerWoning:b?r2(t/b):0,
     bronnen:bronnen().map(x=>({...x,wat:x.wat.trim()})),
     nietInAanvraag:S.woningen.filter(w=>!inAanvraag(w)).map(w=>({adres:[w.straat,w.nr,w.toev].filter(Boolean).join(' '), woonplaats:w.plaats, wozWaarde:w.wozWaarde||null, reden:`WOZ-waarde ${WOZ_GRENS} of hoger`})),
-    woningen:WS().map(w=>({adres:[w.straat,w.nr,w.toev].filter(Boolean).join(' '), woonplaats:w.plaats, woz:w.woz, wozWaarde:w.wozWaarde||null, eigenaar:w.eig, energielabel:w.label,
+    woningen:WS().map(w=>({adres:[w.straat,w.nr,w.toev].filter(Boolean).join(' '), woonplaats:w.plaats, woz:w.woz, wozWaarde:w.wozWaarde||null, eigenaar:w.eig, energielabel:lbl(w),
       opgehaald:w.auto?{energielabel:w.auto.label, wozWaarde:w.auto.wozWaarde||null}:null, woonoppervlakte:w.opp||null, ligging:w.ligging||null,
-      slechteBouwdelen:w.label==='Onbekend'?bouwdelen(w):[], maatregelen:Object.fromEntries(actief().map(m=>[m.k,r2(num(vdGet(w,m.k)))]).filter(([,v])=>v)), subsidie:r2(bedragWoning(w))})),
+      slechteBouwdelen:lbl(w)==='Onbekend'?bouwdelen(w):[], maatregelen:Object.fromEntries(actief().map(m=>[m.k,r2(num(vdGet(w,m.k)))]).filter(([,v])=>v)), subsidie:r2(bedragWoning(w))})),
   };
 }
 async function verzend(){
@@ -1497,7 +1502,7 @@ function buildCells(){
     M.forEach(m=>{ const q=w&&S.mt[m.k]?.on?r2(num(vdGet(w,m.k))):0; const ec=colName(colIdx(m.col)+1); s2[m.col+r]=q||null; s2[ec+r]=q*m.tarief; rowTot+=q*m.tarief; });
     s2['I'+r]=rowTot; sum2+=rowTot;
     if(w){
-      Object.assign(s2,{['A'+r]:w.straat,['B'+r]:/^\d+$/.test(w.nr)?+w.nr:w.nr,['C'+r]:w.toev||null,['D'+r]:w.plaats,['E'+r]:w.woz,['F'+r]:w.eig,['G'+r]:w.label,['H'+r]:w.label==='Onbekend'?bouwdelen(w).join(', '):null});
+      Object.assign(s2,{['A'+r]:w.straat,['B'+r]:/^\d+$/.test(w.nr)?+w.nr:w.nr,['C'+r]:w.toev||null,['D'+r]:w.plaats,['E'+r]:w.woz,['F'+r]:w.eig,['G'+r]:lbl(w),['H'+r]:lbl(w)==='Onbekend'?bouwdelen(w).join(', '):null});
     }
   }
   s2.I26=sum2;
@@ -1539,7 +1544,7 @@ function buildReport(){
   <h2 class="pb">2. Invulblad woningbestand</h2>
   <p>Totaal subsidiebedrag: <b>${eur.format(t)}</b> · Maximaal subsidiebedrag: ${eur.format(b*MAX_PER_WONING)}</p>
   <table><tr><th>Adres</th><th>Woonplaats</th><th>WOZ</th><th>Eigenaar</th><th>Label</th><th>Slechte bouwdelen</th>${act.map(m=>`<th class="r">${m.naam}${m.perWoning?'':' (m²)'}</th>`).join('')}<th class="r">Subsidie</th></tr>
-  ${ws.map(w=>`<tr><td>${esc([w.straat,w.nr,w.toev].filter(Boolean).join(' '))}</td><td>${esc(w.plaats)}</td><td>${w.wozWaarde?nf0.format(w.wozWaarde)+' ':''}(${esc(w.woz)})${w.auto?.wozWaarde&&w.auto.wozWaarde!==w.wozWaarde?' *':''}</td><td>${esc(w.eig)}</td><td>${esc(w.label)}${w.auto&&'label' in w.auto&&w.auto.label!==w.label?' *':''}</td><td>${w.label==='Onbekend'?esc(bouwdelen(w).join(', ')):''}</td>${act.map(m=>`<td class="r">${m.perWoning?(num(vdGet(w,m.k))?'1':''):nf.format(r2(num(vdGet(w,m.k))))+(vastIds(m.k).includes(w.id)?' *':'')}</td>`).join('')}<td class="r">${eur.format(bedragWoning(w))}</td></tr>`).join('')}
+  ${ws.map(w=>`<tr><td>${esc([w.straat,w.nr,w.toev].filter(Boolean).join(' '))}</td><td>${esc(w.plaats)}</td><td>${w.wozWaarde?nf0.format(w.wozWaarde)+' ':''}(${esc(w.woz)})${w.auto?.wozWaarde&&w.auto.wozWaarde!==w.wozWaarde?' *':''}</td><td>${esc(w.eig)}</td><td>${esc(lbl(w))}${w.auto&&'label' in w.auto&&w.auto.label!==w.label?' *':''}</td><td>${lbl(w)==='Onbekend'?esc(bouwdelen(w).join(', ')):''}</td>${act.map(m=>`<td class="r">${m.perWoning?(num(vdGet(w,m.k))?'1':''):nf.format(r2(num(vdGet(w,m.k))))+(vastIds(m.k).includes(w.id)?' *':'')}</td>`).join('')}<td class="r">${eur.format(bedragWoning(w))}</td></tr>`).join('')}
   </table>
   <p style="font-size:8pt">* = zelf aangepast ten opzichte van de opgehaalde waarde of de automatische verdeling.</p>
   ${uit.length?`<p style="font-size:8.5pt"><b>Niet in de aanvraag</b> (WOZ-waarde ${eur.format(WOZ_GRENS).replace(',00','')} of hoger): ${uit.map(w=>esc(adres(w))+(w.wozWaarde?' ('+nf0.format(w.wozWaarde)+')':'')).join(', ')}.</p>`:''}

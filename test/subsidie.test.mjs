@@ -128,3 +128,31 @@ test('fromPre zet adresverkenner-gegevens om', () => {
   ]);
   assert.deepEqual(json(run, 'S.mt'), { J: { on: true, offerte: '55,5' }, N: { on: true, offerte: '12' } });
 });
+
+test('energielabel hoeft niet bij minimaal 2 slechte bouwdelen op gebouwniveau', () => {
+  const { run } = vve({ aantalWoningenGebouw: 2, woningen: woningen(2, () => ({ energielabel: '' })) });
+  // Bij minder dan 3 woningen geen splitsingsakte: dak, gevel, vloer en kozijnen kunnen voor het hele gebouw gelden.
+  assert.equal(run('splitsActief()'), false);
+  assert.equal(run('woningKlaar(WS()[0])'), false);
+  run('S.bdGebouw=["Dak"]');
+  assert.equal(run('labelOptioneel()'), false);
+  assert.equal(run('woningKlaar(WS()[0])'), false);
+  run('S.bdGebouw=["Dak","Vloer"]');
+  assert.equal(run('labelOptioneel()'), true);
+  assert.equal(run('woningKlaar(WS()[0])'), true);
+  assert.equal(run('checks().err.filter(e=>e.s===2).length'), 0);
+  // Een ingevuld label blijft gewoon gelden.
+  run('WS()[1].label="E"');
+  assert.deepEqual(json(run, 'WS().map(lbl)'), ['Onbekend', 'E']);
+});
+
+test('energielabel optioneel met collectieve bouwdelen uit de splitsingsakte', () => {
+  const { run } = vve({ woningen: woningen(4, () => ({ energielabel: '' })) });
+  run('S.splitsing={...SPLITS_STD}; S.bdGebouw=["Dak","Gevel / muren"]');
+  assert.equal(run('splitsActief()'), true);
+  assert.equal(run('WS().every(woningKlaar)'), true);
+  // Glas is individueel en telt dus niet als bouwdeel voor het hele gebouw.
+  run('S.bdGebouw=["Dak","Glas"]');
+  assert.equal(run('labelOptioneel()'), false);
+  assert.equal(run('WS().some(woningKlaar)'), false);
+});

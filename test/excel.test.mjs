@@ -132,3 +132,13 @@ test('makeXlsx zonder woningen geeft een geldig, leeg ingevuld bestand', async (
   const s2 = await zip.file('xl/worksheets/sheet2.xml').async('string');
   assert.match(cel(s2, 'I26'), /<v>0<\/v>/);
 });
+
+test('buildCells: leeg label bij slechte bouwdelen op gebouwniveau wordt Onbekend met bouwdelen', () => {
+  const { run } = vve({ aantalWoningenGebouw: 2, woningen: woningen(2, i => ({ energielabel: i ? 'F' : '' })), maatregelen: { dak: '50' } });
+  run('S.bdGebouw=["Dak","Gevel / muren"]; syncVerdeling()');
+  const { s2 } = json(run, 'buildCells()');
+  assert.equal(s2.G32, 'Onbekend');
+  assert.equal(s2.H32, 'Dak, Gevel / muren');
+  assert.equal(s2.G33, 'F');
+  assert.equal(s2.H33, null);
+});
