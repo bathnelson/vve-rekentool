@@ -290,6 +290,10 @@ input.leeg.err,select.leeg.err{border-color:var(--danger)}
 .bd.leeg{background:var(--todo);outline:1.5px solid var(--todo-border)}
 .legenda{display:inline-block;width:.9em;height:.9em;border-radius:3px;background:var(--todo);border:1px solid var(--todo-border);vertical-align:-1px;margin-right:4px}
 #report{display:none}
+/* watermerk: prototype voor intern gebruik */
+.watermerk{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none;overflow:hidden}
+.watermerk span{transform:rotate(-30deg);font-size:clamp(2rem,9vw,6.5rem);font-weight:800;letter-spacing:.06em;text-transform:uppercase;text-align:center;line-height:1.1;color:var(--text);opacity:.09;white-space:nowrap}
+@media (orientation:portrait){.watermerk span{transform:rotate(-60deg);font-size:clamp(2rem,16vw,6.5rem)}}
 @media print{
   body{background:#fff;color:#000;font-size:10pt}
   header.top,main,.navbar{display:none!important}
@@ -300,11 +304,13 @@ input.leeg.err,select.leeg.err{border-color:var(--danger)}
   #report th,#report td{border:1px solid #999;padding:3px 4px;text-align:left;vertical-align:top}
   #report td.r,#report th.r{text-align:right}
   #report .pb{page-break-before:always}
+  .watermerk span{color:#000;opacity:.08}
   @page{size:A4 landscape;margin:12mm}
 }
 </style>
 </head>
 <body>
+<div class="watermerk" aria-hidden="true"><span>Prototype<br>intern gebruik</span></div>
 <header class="top">
   <div class="wrap">
     <div class="kop"><div><h1>Rekenhulp VvE-subsidie</h1>
